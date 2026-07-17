@@ -2,6 +2,7 @@
 
 import { ClipboardIcon, EraserIcon, FileJsonIcon, Wand2Icon, WrapTextIcon } from "lucide-react"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -32,11 +33,26 @@ export function JsonWorkspace() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2">
-          <Button title="Format the JSON with indentation" onClick={lens.beautifyJson}>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant={lens.largeInputWarning ? "destructive" : "secondary"}>
+              {lens.inputSizeLabel}
+            </Badge>
+            {lens.isProcessing ? <span>Processing in background</span> : null}
+          </div>
+          <Button
+            title="Format the JSON with indentation"
+            disabled={Boolean(lens.largeInputWarning)}
+            onClick={lens.beautifyJson}
+          >
             <Wand2Icon data-icon="inline-start" />
             Beautify JSON
           </Button>
-          <Button variant="outline" title="Remove whitespace from the JSON" onClick={lens.minifyJson}>
+          <Button
+            variant="outline"
+            title="Remove whitespace from the JSON"
+            disabled={Boolean(lens.largeInputWarning)}
+            onClick={lens.minifyJson}
+          >
             <WrapTextIcon data-icon="inline-start" />
             Minify JSON
           </Button>

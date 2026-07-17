@@ -33,6 +33,60 @@ export type ColumnStats = {
   warnings: string[]
 }
 
+export type RowSourceMode =
+  | "auto"
+  | "array-items"
+  | "object-entries"
+  | "single-object"
+  | "nested-path"
+
+export type RowSourceConfig = {
+  mode: RowSourceMode
+  nestedPath?: string
+  columnLimit?: number
+}
+
+export type ArrayPathCandidate = {
+  path: string
+  label: string
+  length: number
+  itemKind: string
+}
+
+export type ShapeSummary = {
+  rootType: string
+  description: string
+  recommendedMode: RowSourceMode
+  candidateArrays: ArrayPathCandidate[]
+  warnings: string[]
+}
+
+export type ArrayColumnCandidate = {
+  column: string
+  rowsWithArrays: number
+  maxItems: number
+  itemKind: string
+}
+
+export type JsonLensProcessedData = {
+  parseResult: ParseResult
+  rows: FlatRow[]
+  columns: string[]
+  allColumnCount: number
+  arrayColumnCandidates: ArrayColumnCandidate[]
+  columnLimitWarning: string | null
+  columnValueOptions: Record<string, string[]>
+  rowSource: RowSourceConfig
+  shapeSummary: ShapeSummary
+  stats: ColumnStats[]
+  typeScript: string
+  jsonStats: ReturnType<typeof countJsonStats> | null
+  sourceSummary: string
+}
+
+const DEFAULT_COLUMN_LIMIT = 200
+const MAX_TYPE_KEYS = 5000
+
 export const SAMPLE_JSON = JSON.stringify(
   [
     {
@@ -179,6 +233,43 @@ export function normalizeRows(value: unknown): FlatRow[] {
   }))
 }
 
+export function normalizeRowsForSource(
+  value: unknown,
+  config: RowSourceConfig,
+  shape = detectJsonShape(value)
+): { rows: FlatRow[]; rowSource: RowSourceConfig } {
+  const mode = config.mode === "auto" ? shape.recommendedMode : config.mode
+  const rowSource = { ...config, mode }
+
+  if (mode === "array-items") {
+    const source = Array.isArray(value) ? value : []
+    return { rows: normalizeRows(source), rowSource }
+  }
+
+  if (mode === "object-entries" && isRecord(value)) {
+    return {
+      rows: Object.entries(value).map(([key, item], index) => ({
+        id: index + 1,
+        original: item,
+        flat: isRecord(item)
+          ? { key, ...flattenValue(item) }
+          : { key, value: item },
+      })),
+      rowSource,
+    }
+  }
+
+  if (mode === "nested-path") {
+    const nestedValue = getJsonPathValue(value, config.nestedPath ?? "")
+    return {
+      rows: Array.isArray(nestedValue) ? normalizeRows(nestedValue) : [],
+      rowSource,
+    }
+  }
+
+  return { rows: normalizeRows(value), rowSource }
+}
+
 export function getColumns(rows: FlatRow[]) {
   return Array.from(
     rows.reduce((set, row) => {
@@ -186,6 +277,154 @@ export function getColumns(rows: FlatRow[]) {
       return set
     }, new Set<string>())
   ).sort((a, b) => a.localeCompare(b))
+}
+
+export function limitColumns(columns: string[], limit = DEFAULT_COLUMN_LIMIT) {
+  if (columns.length <= limit) {
+    return { columns, warning: null }
+  }
+
+  return {
+    columns: columns.slice(0, limit),
+    warning: `${columns.length.toLocaleString()} columns were found. Showing the first ${limit.toLocaleString()} so the table stays responsive. Choose a row source or sub-table to narrow the shape.`,
+  }
+}
+
+export function detectJsonShape(value: unknown): ShapeSummary {
+  const candidateArrays = findArrayPathCandidates(value)
+  const warnings: string[] = []
+
+  if (Array.isArray(value)) {
+    return {
+      rootType: "Root array",
+      description: `${value.length.toLocaleString()} root array item${
+        value.length === 1 ? "" : "s"
+      }`,
+      recommendedMode: "array-items",
+      candidateArrays,
+      warnings,
+    }
+  }
+
+  if (isRecord(value)) {
+    const entries = Object.entries(value)
+    const objectLikeEntries = entries.filter(([, child]) => isRecord(child) || Array.isArray(child))
+    const looksDynamic =
+      entries.length >= 50 && objectLikeEntries.length / Math.max(entries.length, 1) >= 0.5
+
+    if (looksDynamic) {
+      warnings.push(
+        "This looks like an object keyed by dynamic IDs. Object entries mode prevents those keys from becoming thousands of columns."
+      )
+    }
+
+    return {
+      rootType: looksDynamic ? "Dynamic-key object" : "Root object",
+      description: looksDynamic
+        ? `${entries.length.toLocaleString()} object entries`
+        : `${entries.length.toLocaleString()} root fields`,
+      recommendedMode: looksDynamic
+        ? "object-entries"
+        : candidateArrays.length
+          ? "nested-path"
+          : "single-object",
+      candidateArrays,
+      warnings,
+    }
+  }
+
+  return {
+    rootType: value === null ? "Null" : `${typeof value} value`,
+    description: sourceLabel(value),
+    recommendedMode: "single-object",
+    candidateArrays,
+    warnings,
+  }
+}
+
+export function findArrayPathCandidates(value: unknown) {
+  const candidates: ArrayPathCandidate[] = []
+
+  function walk(item: unknown, path: string, depth: number) {
+    if (candidates.length >= 80 || depth > 5) return
+
+    if (Array.isArray(item)) {
+      candidates.push({
+        path,
+        label: path === "$" ? "Root array" : path,
+        length: item.length,
+        itemKind: inferCollectionItemKind(item),
+      })
+      item.slice(0, 3).forEach((child) => walk(child, path, depth + 1))
+      return
+    }
+
+    if (!isRecord(item)) return
+
+    for (const [key, child] of Object.entries(item)) {
+      const childPath = path === "$" ? key : `${path}.${key}`
+      walk(child, childPath, depth + 1)
+    }
+  }
+
+  walk(value, "$", 0)
+
+  return candidates
+    .filter((candidate, index, source) => {
+      if (candidate.path === "$") return false
+      return source.findIndex((item) => item.path === candidate.path) === index
+    })
+    .sort((a, b) => b.length - a.length || a.path.localeCompare(b.path))
+}
+
+export function getJsonPathValue(value: unknown, path: string) {
+  if (!path || path === "$") return value
+
+  return path.split(".").reduce<unknown>((current, segment) => {
+    if (Array.isArray(current)) {
+      const index = Number(segment)
+      return Number.isInteger(index) ? current[index] : undefined
+    }
+
+    if (isRecord(current)) return current[segment]
+    return undefined
+  }, value)
+}
+
+export function getArrayColumnCandidates(rows: FlatRow[], columns: string[]) {
+  return columns
+    .map((column) => {
+      const arrays = rows
+        .map((row) => row.flat[column])
+        .filter((value): value is unknown[] => Array.isArray(value))
+
+      if (!arrays.length) return null
+
+      return {
+        column,
+        rowsWithArrays: arrays.length,
+        maxItems: Math.max(...arrays.map((items) => items.length)),
+        itemKind: inferCollectionItemKind(arrays.flatMap((items) => items.slice(0, 5))),
+      }
+    })
+    .filter((candidate): candidate is ArrayColumnCandidate => Boolean(candidate))
+}
+
+export function inferCollectionItemKind(items: unknown[]) {
+  if (items.length === 0) return "empty"
+
+  const kinds = Array.from(
+    new Set(
+      items.slice(0, 25).map((item) => {
+        if (Array.isArray(item)) return "array"
+        if (isRecord(item)) return "object"
+        if (item === null) return "null"
+        return typeof item
+      })
+    )
+  )
+
+  return kinds.length === 1 ? kinds[0] : "mixed"
 }
 
 export function valueType(value: unknown) {
@@ -271,6 +510,28 @@ export function computeStats(rows: FlatRow[], columns: string[]): ColumnStats[] 
       warnings,
     }
   })
+}
+
+export function getColumnValueOptions(
+  rows: FlatRow[],
+  columns: string[],
+  limit = 250
+) {
+  return Object.fromEntries(
+    columns.map((column) => {
+      const values = Array.from(
+        rows.reduce((set, row) => {
+          const value = displayValue(row.flat[column]) || "(blank)"
+          set.add(value)
+          return set
+        }, new Set<string>())
+      )
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .slice(0, limit)
+
+      return [column, values]
+    })
+  )
 }
 
 export function compareValues(a: unknown, b: unknown) {
@@ -443,6 +704,74 @@ export function sourceLabel(value: unknown) {
   if (isRecord(value)) return "Single object"
   if (value === null) return "Null value"
   return `${typeof value} value`
+}
+
+export function createJsonLensProcessedData(input: string): JsonLensProcessedData {
+  return createJsonLensProcessedDataWithConfig(input, { mode: "auto" })
+}
+
+export function createJsonLensProcessedDataWithConfig(
+  input: string,
+  config: RowSourceConfig = { mode: "auto" }
+): JsonLensProcessedData {
+  const parseResult = parseJson(input)
+
+  if (parseResult.error) {
+    return {
+      parseResult,
+      rows: [],
+      columns: [],
+      allColumnCount: 0,
+      arrayColumnCandidates: [],
+      columnLimitWarning: null,
+      columnValueOptions: {},
+      rowSource: config,
+      shapeSummary: {
+        rootType: "Needs JSON",
+        description: "Paste valid JSON to inspect its shape.",
+        recommendedMode: "auto",
+        candidateArrays: [],
+        warnings: [],
+      },
+      stats: [],
+      typeScript: "",
+      jsonStats: null,
+      sourceSummary: "Needs JSON",
+    }
+  }
+
+  const value = parseResult.value
+  const shapeSummary = detectJsonShape(value)
+  const { rows, rowSource } = normalizeRowsForSource(value, config, shapeSummary)
+  const allColumns = getColumns(rows)
+  const { columns, warning } = limitColumns(
+    allColumns,
+    config.columnLimit ?? DEFAULT_COLUMN_LIMIT
+  )
+  const jsonStats = countJsonStats(value)
+  const typeScript =
+    jsonStats.keys > MAX_TYPE_KEYS
+      ? `// Type generation skipped because this JSON has ${jsonStats.keys.toLocaleString()} keys.\n// Narrow the row source before generating TypeScript.`
+      : generateTypes(value, "Root")
+
+  return {
+    parseResult: { ...parseResult, value: null },
+    rows,
+    columns,
+    allColumnCount: allColumns.length,
+    arrayColumnCandidates: getArrayColumnCandidates(rows, allColumns),
+    columnLimitWarning: warning,
+    columnValueOptions: getColumnValueOptions(rows, columns),
+    rowSource,
+    shapeSummary,
+    stats: computeStats(rows, columns),
+    typeScript,
+    jsonStats,
+    sourceSummary:
+      rowSource.mode === "nested-path" && config.nestedPath
+        ? `${config.nestedPath}: ${rows.length.toLocaleString()} rows`
+        : shapeSummary.description,
+  }
 }
 
 export function downloadText(filename: string, content: string, type: string) {

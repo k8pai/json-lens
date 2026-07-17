@@ -19,7 +19,6 @@ import type { ComponentType, ReactNode, SVGProps } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { sourceLabel } from "@/lib/json-lens"
 
 import { useJsonLens } from "./json-lens-provider"
 import { ActionButton, Metric } from "./shared"
@@ -72,11 +71,15 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
     fileInputRef,
     handleFile,
     jsonStats,
+    largeInputWarning,
     loadSample,
     minifyJson,
     parseResult,
     rows,
+    sourceSummary,
     toast,
+    isProcessing,
+    inputSizeLabel,
   } = useJsonLens()
 
   return (
@@ -139,7 +142,7 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
           <section className="grid gap-3 border-b py-4 sm:grid-cols-2 lg:grid-cols-5">
             <Metric
               label="Source"
-              value={parseResult.error ? "Needs JSON" : sourceLabel(parseResult.value)}
+              value={parseResult.error ? "Needs JSON" : sourceSummary}
             />
             <Metric label="Rows" value={rows.length.toLocaleString()} />
             <Metric label="Columns" value={columns.length.toLocaleString()} />
@@ -162,8 +165,24 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
           ) : null}
 
           <div className="min-h-0 flex-1 py-5">
-            <div className="min-w-0">{children}</div>
             <WorkspaceNav pathname={pathname} />
+
+            {isProcessing || largeInputWarning ? (
+              <Card className="mb-5 border-primary/20 bg-primary/5">
+                <CardContent>
+                  <h2 className="font-semibold">
+                    {isProcessing ? "Processing JSON in the background" : "Large JSON loaded"}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {isProcessing
+                      ? `Input size is ${inputSizeLabel}. The current table stays usable while parsing finishes.`
+                      : largeInputWarning}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <div className="min-w-0">{children}</div>
           </div>
         </div>
 
@@ -179,7 +198,7 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
 
 function WorkspaceNav({ pathname }: { pathname: string }) {
   return (
-    <Card className="mt-5">
+    <Card className="mb-5 border-b py-4">
       <CardContent className="grid gap-2 md:grid-cols-5">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
@@ -190,14 +209,14 @@ function WorkspaceNav({ pathname }: { pathname: string }) {
               key={item.href}
               asChild
               variant={active ? "secondary" : "ghost"}
-              className="h-auto justify-start px-3 py-3 text-left"
+              className="h-auto justify-start px-3 py-3 text-left text-wrap"
               title={item.description}
             >
               <Link href={item.href}>
                 <Icon className="size-4" data-icon="inline-start" />
-                <span className="grid">
-                  <span className="font-medium">{item.label}</span>
-                  <span className="text-xs text-muted-foreground">{item.description}</span>
+                <span className="grid place-self-stretch">
+                  <span className="font-medium ">{item.label}</span>
+                  <span className="text-xs text-muted-foreground text-wrap inline-block align-top">{item.description}</span>
                 </span>
               </Link>
             </Button>

@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useEffect,
   useContext,
   useMemo,
   useRef,
@@ -14,28 +15,35 @@ import {
 
 import {
   compareValues,
-  computeStats,
-  countJsonStats,
+  createJsonLensProcessedData,
+  createJsonLensProcessedDataWithConfig,
   displayValue,
-  generateTypes,
-  getColumns,
-  normalizeRows,
   parseJson,
   SAMPLE_JSON,
   stringifyPretty,
   type FlatRow,
+  type JsonLensProcessedData,
+  type RowSourceConfig,
+  type RowSourceMode,
   type SortState,
 } from "@/lib/json-lens"
+import type { WorkerResponse } from "@/lib/json-lens.worker"
+
+const LARGE_INPUT_BYTES = 5 * 1024 * 1024
+const initialProcessedData = createJsonLensProcessedData(SAMPLE_JSON)
 
 type JsonLensContextValue = {
   jsonInput: string
   setJsonInput: Dispatch<SetStateAction<string>>
-  parseResult: ReturnType<typeof parseJson>
+  parseResult: JsonLensProcessedData["parseResult"]
   rows: FlatRow[]
   columns: string[]
+  allColumnCount: number
+  arrayColumnCandidates: JsonLensProcessedData["arrayColumnCandidates"]
   orderedColumns: string[]
   visibleColumns: string[]
   columnFilters: Record<string, string>
+  columnLimitWarning: string | null
   columnValueOptions: Record<string, string[]>
   columnWidths: Record<string, number>
   currentPage: number
@@ -43,14 +51,21 @@ type JsonLensContextValue = {
   globalSearch: string
   hiddenColumns: Set<string>
   enumColumns: Set<string>
-  jsonStats: ReturnType<typeof countJsonStats> | null
+  jsonStats: JsonLensProcessedData["jsonStats"]
+  isProcessing: boolean
+  inputBytes: number
+  inputSizeLabel: string
+  largeInputWarning: string | null
   pageSize: number
   pagedRows: FlatRow[]
+  rowSourceConfig: RowSourceConfig
   sortState: SortState
-  stats: ReturnType<typeof computeStats>
+  stats: JsonLensProcessedData["stats"]
   toast: string
   totalPages: number
   typeScript: string
+  sourceSummary: string
+  shapeSummary: JsonLensProcessedData["shapeSummary"]
   fileInputRef: RefObject<HTMLInputElement | null>
   beautifyJson: () => void
   handleFile: (file: File) => void
@@ -58,9 +73,12 @@ type JsonLensContextValue = {
   minifyJson: () => void
   moveColumn: (column: string, direction: -1 | 1) => void
   notify: (message: string) => void
+  reorderColumn: (sourceColumn: string, targetColumn: string) => void
   setColumnWidths: Dispatch<SetStateAction<Record<string, number>>>
   setGlobalSearch: (value: string) => void
   setHiddenColumns: Dispatch<SetStateAction<Set<string>>>
+  setNestedPath: (path: string) => void
+  setRowSourceMode: (mode: RowSourceMode) => void
   toggleEnumColumn: (column: string) => void
   setPage: Dispatch<SetStateAction<number>>
   setPageSize: (value: number) => void
@@ -73,6 +91,7 @@ const JsonLensContext = createContext<JsonLensContextValue | null>(null)
 export function JsonLensProvider({ children }: { children: ReactNode }) {
   const [jsonInput, setJsonInput] = useState(SAMPLE_JSON)
   const [globalSearchValue, setGlobalSearchValue] = useState("")
+  const [appliedGlobalSearchValue, setAppliedGlobalSearchValue] = useState("")
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
   const [sortState, setSortState] = useState<SortState>(null)
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
@@ -82,14 +101,101 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
   const [page, setPage] = useState(1)
   const [pageSizeValue, setPageSizeValue] = useState(25)
   const [toast, setToast] = useState("")
+  const [processedData, setProcessedData] =
+    useState<JsonLensProcessedData>(initialProcessedData)
+  const [rowSourceConfig, setRowSourceConfig] = useState<RowSourceConfig>({
+    mode: "auto",
+    columnLimit: 200,
+  })
+  const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const workerRef = useRef<Worker | null>(null)
+  const requestIdRef = useRef(0)
 
-  const parseResult = useMemo(() => parseJson(jsonInput), [jsonInput])
-  const rows = useMemo(
-    () => (parseResult.error ? [] : normalizeRows(parseResult.value)),
-    [parseResult]
-  )
-  const columns = useMemo(() => getColumns(rows), [rows])
+  const inputBytes = useMemo(() => new Blob([jsonInput]).size, [jsonInput])
+  const inputSizeLabel = useMemo(() => formatBytes(inputBytes), [inputBytes])
+  const largeInputWarning =
+    inputBytes >= LARGE_INPUT_BYTES
+      ? `Large input (${inputSizeLabel}). JSON Lens will process it in the background; filtering and exports may still take longer.`
+      : null
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setAppliedGlobalSearchValue(globalSearchValue)
+    }, 180)
+
+    return () => window.clearTimeout(timeout)
+  }, [globalSearchValue])
+
+  useEffect(() => {
+    let cancelled = false
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+
+    const delay = inputBytes >= LARGE_INPUT_BYTES ? 450 : 120
+    const timeout = window.setTimeout(() => {
+      setIsProcessing(true)
+
+      if (typeof Worker === "undefined") {
+        window.setTimeout(() => {
+          if (cancelled) return
+          setProcessedData(createJsonLensProcessedDataWithConfig(jsonInput, rowSourceConfig))
+          setIsProcessing(false)
+        }, 0)
+        return
+      }
+
+      if (!workerRef.current) {
+        workerRef.current = new Worker(
+          new URL("../../lib/json-lens.worker.ts", import.meta.url),
+          { type: "module" }
+        )
+      }
+
+      const worker = workerRef.current
+      worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+        const response = event.data
+        if (cancelled || response.id !== requestId) return
+
+        if (response.ok) {
+          setProcessedData(response.data)
+        } else {
+          setProcessedData(createErrorProcessedData(response.error, rowSourceConfig))
+        }
+        setIsProcessing(false)
+      }
+      worker.onerror = (event) => {
+        if (cancelled) return
+        setProcessedData(createErrorProcessedData(event.message, rowSourceConfig))
+        setIsProcessing(false)
+      }
+      worker.postMessage({ id: requestId, input: jsonInput, config: rowSourceConfig })
+    }, delay)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeout)
+    }
+  }, [inputBytes, jsonInput, rowSourceConfig])
+
+  useEffect(() => {
+    return () => workerRef.current?.terminate()
+  }, [])
+
+  const {
+    parseResult,
+    rows,
+    columns,
+    allColumnCount,
+    arrayColumnCandidates,
+    columnLimitWarning,
+    columnValueOptions,
+    shapeSummary,
+    stats,
+    typeScript,
+    jsonStats,
+    sourceSummary,
+  } = processedData
   const orderedColumns = useMemo(() => {
     const known = columnOrder.filter((column) => columns.includes(column))
     const newColumns = columns.filter((column) => !known.includes(column))
@@ -97,36 +203,8 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     return [...known, ...newColumns]
   }, [columnOrder, columns])
   const visibleColumns = orderedColumns.filter((column) => !hiddenColumns.has(column))
-  // Data-grid pattern: compute enum choices once per parsed dataset so filter controls stay presentation-only.
-  const columnValueOptions = useMemo(() => {
-    return Object.fromEntries(
-      columns.map((column) => {
-        const values = Array.from(
-          rows.reduce((set, row) => {
-            const value = displayValue(row.flat[column]) || "(blank)"
-            set.add(value)
-            return set
-          }, new Set<string>())
-        )
-          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-          .slice(0, 250)
-
-        return [column, values]
-      })
-    )
-  }, [columns, rows])
-  const stats = useMemo(() => computeStats(rows, columns), [rows, columns])
-  const typeScript = useMemo(
-    () => (parseResult.error ? "" : generateTypes(parseResult.value, "Root")),
-    [parseResult]
-  )
-  const jsonStats = useMemo(
-    () => (parseResult.error ? null : countJsonStats(parseResult.value)),
-    [parseResult]
-  )
-
   const filteredRows = useMemo(() => {
-    const search = globalSearchValue.trim().toLowerCase()
+    const search = appliedGlobalSearchValue.trim().toLowerCase()
 
     let nextRows = rows.filter((row) => {
       const values = Object.values(row.flat).map((value) =>
@@ -154,7 +232,7 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     }
 
     return nextRows
-  }, [columnFilters, enumColumns, globalSearchValue, rows, sortState])
+  }, [appliedGlobalSearchValue, columnFilters, enumColumns, rows, sortState])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSizeValue))
   const currentPage = Math.min(page, totalPages)
@@ -213,6 +291,24 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     setPage(1)
   }
 
+  function resetTableControls() {
+    setColumnFilters({})
+    setHiddenColumns(new Set())
+    setEnumColumns(new Set())
+    setColumnOrder([])
+    setPage(1)
+  }
+
+  function setRowSourceMode(mode: RowSourceMode) {
+    setRowSourceConfig((current) => ({ ...current, mode }))
+    resetTableControls()
+  }
+
+  function setNestedPath(path: string) {
+    setRowSourceConfig((current) => ({ ...current, nestedPath: path }))
+    resetTableControls()
+  }
+
   function toggleSort(column: string) {
     setSortState((current) => {
       if (!current || current.column !== column) {
@@ -240,7 +336,28 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  function reorderColumn(sourceColumn: string, targetColumn: string) {
+    if (sourceColumn === targetColumn) return
+
+    setColumnOrder(() => {
+      const sourceIndex = orderedColumns.indexOf(sourceColumn)
+      const targetIndex = orderedColumns.indexOf(targetColumn)
+
+      if (sourceIndex < 0 || targetIndex < 0) return orderedColumns
+
+      const next = [...orderedColumns]
+      const [movedColumn] = next.splice(sourceIndex, 1)
+      next.splice(targetIndex, 0, movedColumn)
+      return next
+    })
+  }
+
   function beautifyJson() {
+    if (inputBytes >= LARGE_INPUT_BYTES) {
+      notify("Beautify is disabled for large JSON to keep the page responsive.")
+      return
+    }
+
     const result = parseJson(jsonInput)
     if (result.error) {
       notify("Fix the JSON before beautifying.")
@@ -251,6 +368,11 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
   }
 
   function minifyJson() {
+    if (inputBytes >= LARGE_INPUT_BYTES) {
+      notify("Minify is disabled for large JSON to keep the page responsive.")
+      return
+    }
+
     const result = parseJson(jsonInput)
     if (result.error) {
       notify("Fix the JSON before minifying.")
@@ -268,9 +390,12 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
         parseResult,
         rows,
         columns,
+        allColumnCount,
+        arrayColumnCandidates,
         orderedColumns,
         visibleColumns,
         columnFilters,
+        columnLimitWarning,
         columnValueOptions,
         columnWidths,
         currentPage,
@@ -279,13 +404,20 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
         hiddenColumns,
         enumColumns,
         jsonStats,
+        isProcessing,
+        inputBytes,
+        inputSizeLabel,
+        largeInputWarning,
         pageSize: pageSizeValue,
         pagedRows,
+        rowSourceConfig,
         sortState,
         stats,
         toast,
         totalPages,
         typeScript,
+        sourceSummary,
+        shapeSummary,
         fileInputRef,
         beautifyJson,
         handleFile,
@@ -293,9 +425,12 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
         minifyJson,
         moveColumn,
         notify,
+        reorderColumn,
         setColumnWidths,
         setGlobalSearch,
         setHiddenColumns,
+        setNestedPath,
+        setRowSourceMode,
         toggleEnumColumn,
         setPage,
         setPageSize,
@@ -316,4 +451,37 @@ export function useJsonLens() {
   }
 
   return context
+}
+
+function createErrorProcessedData(
+  message: string,
+  rowSource: RowSourceConfig
+): JsonLensProcessedData {
+  return {
+    parseResult: { value: null, error: message },
+    rows: [],
+    columns: [],
+    allColumnCount: 0,
+    arrayColumnCandidates: [],
+    columnLimitWarning: null,
+    columnValueOptions: {},
+    rowSource,
+    shapeSummary: {
+      rootType: "Needs JSON",
+      description: message,
+      recommendedMode: "auto",
+      candidateArrays: [],
+      warnings: [],
+    },
+    stats: [],
+    typeScript: "",
+    jsonStats: null,
+    sourceSummary: "Needs JSON",
+  }
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
