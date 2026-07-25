@@ -23,6 +23,7 @@ import {
   stringifyPretty,
   type FlatRow,
   type JsonLensProcessedData,
+  type ProcessingUpdate,
   type RowSourceConfig,
   type RowSourceMode,
   type SortState,
@@ -30,7 +31,21 @@ import {
 import type { WorkerResponse } from "@/lib/json-lens.worker"
 
 const LARGE_INPUT_BYTES = 5 * 1024 * 1024
+const PREVIEW_ROW_LIMIT = 1000
+const WORKSPACE_STORAGE_PREFIX = "json-lens:view"
 const initialProcessedData = createJsonLensProcessedData(SAMPLE_JSON)
+
+type SavedWorkspaceView = {
+  columnFilters?: Record<string, string>
+  columnOrder?: string[]
+  columnWidths?: Record<string, number>
+  enumColumns?: string[]
+  globalSearch?: string
+  hiddenColumns?: string[]
+  pageSize?: number
+  processFullDataset?: boolean
+  rowSourceConfig?: RowSourceConfig
+}
 
 type JsonLensContextValue = {
   jsonInput: string
@@ -56,13 +71,21 @@ type JsonLensContextValue = {
   inputBytes: number
   inputSizeLabel: string
   largeInputWarning: string | null
+  largeDataMode: boolean
   pageSize: number
   pagedRows: FlatRow[]
+  processFullDataset: boolean
+  processingProgress: ProcessingUpdate | null
+  processingProgressLabel: string
   rowSourceConfig: RowSourceConfig
   sortState: SortState
   stats: JsonLensProcessedData["stats"]
+  deferredStats: boolean
+  isPreview: boolean
+  processingWarnings: string[]
   toast: string
   totalPages: number
+  totalRows: number
   typeScript: string
   sourceSummary: string
   shapeSummary: JsonLensProcessedData["shapeSummary"]
@@ -78,6 +101,7 @@ type JsonLensContextValue = {
   setGlobalSearch: (value: string) => void
   setHiddenColumns: Dispatch<SetStateAction<Set<string>>>
   setNestedPath: (path: string) => void
+  setProcessFullDataset: Dispatch<SetStateAction<boolean>>
   setRowSourceMode: (mode: RowSourceMode) => void
   toggleEnumColumn: (column: string) => void
   setPage: Dispatch<SetStateAction<number>>
@@ -107,6 +131,9 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     mode: "auto",
     columnLimit: 200,
   })
+  const [processFullDataset, setProcessFullDataset] = useState(false)
+  const [processingProgress, setProcessingProgress] =
+    useState<ProcessingUpdate | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const workerRef = useRef<Worker | null>(null)
@@ -118,6 +145,80 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     inputBytes >= LARGE_INPUT_BYTES
       ? `Large input (${inputSizeLabel}). JSON Lens will process it in the background; filtering and exports may still take longer.`
       : null
+  const largeDataMode = inputBytes >= LARGE_INPUT_BYTES
+  const effectiveRowSourceConfig = useMemo<RowSourceConfig>(
+    () => ({
+      ...rowSourceConfig,
+      deferHeavyWork: largeDataMode && !processFullDataset,
+      previewRowLimit:
+        largeDataMode && !processFullDataset ? PREVIEW_ROW_LIMIT : undefined,
+    }),
+    [largeDataMode, processFullDataset, rowSourceConfig]
+  )
+  const processingProgressLabel = processingProgress
+    ? `${processingProgress.message} (${processingProgress.progress}%)`
+    : isProcessing
+      ? "Processing JSON"
+      : "Idle"
+  const workspaceStorageKey = useMemo(
+    () => `${WORKSPACE_STORAGE_PREFIX}:${fingerprintJsonInput(jsonInput)}`,
+    [jsonInput]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    queueMicrotask(() => {
+      if (cancelled) return
+
+      const savedView = readSavedWorkspaceView(workspaceStorageKey)
+      if (!savedView) return
+
+      setColumnFilters(savedView.columnFilters ?? {})
+      setColumnOrder(savedView.columnOrder ?? [])
+      setColumnWidths(savedView.columnWidths ?? {})
+      setEnumColumns(new Set(savedView.enumColumns ?? []))
+      setGlobalSearchValue(savedView.globalSearch ?? "")
+      setHiddenColumns(new Set(savedView.hiddenColumns ?? []))
+      setPageSizeValue(savedView.pageSize ?? 25)
+      setProcessFullDataset(Boolean(savedView.processFullDataset))
+      setRowSourceConfig(savedView.rowSourceConfig ?? { mode: "auto", columnLimit: 200 })
+      setPage(1)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceStorageKey])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      writeSavedWorkspaceView(workspaceStorageKey, {
+        columnFilters,
+        columnOrder,
+        columnWidths,
+        enumColumns: Array.from(enumColumns),
+        globalSearch: globalSearchValue,
+        hiddenColumns: Array.from(hiddenColumns),
+        pageSize: pageSizeValue,
+        processFullDataset,
+        rowSourceConfig,
+      })
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
+  }, [
+    columnFilters,
+    columnOrder,
+    columnWidths,
+    enumColumns,
+    globalSearchValue,
+    hiddenColumns,
+    pageSizeValue,
+    processFullDataset,
+    rowSourceConfig,
+    workspaceStorageKey,
+  ])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -135,11 +236,22 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     const delay = inputBytes >= LARGE_INPUT_BYTES ? 450 : 120
     const timeout = window.setTimeout(() => {
       setIsProcessing(true)
+      setProcessingProgress({
+        stage: "parse",
+        message: "Queued JSON processing",
+        progress: 1,
+      })
 
       if (typeof Worker === "undefined") {
         window.setTimeout(() => {
           if (cancelled) return
-          setProcessedData(createJsonLensProcessedDataWithConfig(jsonInput, rowSourceConfig))
+          setProcessedData(
+            createJsonLensProcessedDataWithConfig(
+              jsonInput,
+              effectiveRowSourceConfig,
+              setProcessingProgress
+            )
+          )
           setIsProcessing(false)
         }, 0)
         return
@@ -157,26 +269,35 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
         const response = event.data
         if (cancelled || response.id !== requestId) return
 
-        if (response.ok) {
+        if (response.ok && response.type === "progress") {
+          setProcessingProgress(response.progress)
+          return
+        }
+
+        if (response.ok && response.type === "result") {
           setProcessedData(response.data)
         } else {
-          setProcessedData(createErrorProcessedData(response.error, rowSourceConfig))
+          setProcessedData(createErrorProcessedData(response.error, effectiveRowSourceConfig))
         }
         setIsProcessing(false)
       }
       worker.onerror = (event) => {
         if (cancelled) return
-        setProcessedData(createErrorProcessedData(event.message, rowSourceConfig))
+        setProcessedData(createErrorProcessedData(event.message, effectiveRowSourceConfig))
         setIsProcessing(false)
       }
-      worker.postMessage({ id: requestId, input: jsonInput, config: rowSourceConfig })
+      worker.postMessage({
+        id: requestId,
+        input: jsonInput,
+        config: effectiveRowSourceConfig,
+      })
     }, delay)
 
     return () => {
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [inputBytes, jsonInput, rowSourceConfig])
+  }, [effectiveRowSourceConfig, inputBytes, jsonInput])
 
   useEffect(() => {
     return () => workerRef.current?.terminate()
@@ -185,11 +306,15 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
   const {
     parseResult,
     rows,
+    totalRows,
     columns,
     allColumnCount,
     arrayColumnCandidates,
     columnLimitWarning,
     columnValueOptions,
+    deferredStats,
+    isPreview,
+    processingWarnings,
     shapeSummary,
     stats,
     typeScript,
@@ -408,13 +533,21 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
         inputBytes,
         inputSizeLabel,
         largeInputWarning,
+        largeDataMode,
         pageSize: pageSizeValue,
         pagedRows,
+        processFullDataset,
+        processingProgress,
+        processingProgressLabel,
         rowSourceConfig,
         sortState,
         stats,
+        deferredStats,
+        isPreview,
+        processingWarnings,
         toast,
         totalPages,
+        totalRows,
         typeScript,
         sourceSummary,
         shapeSummary,
@@ -430,6 +563,7 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
         setGlobalSearch,
         setHiddenColumns,
         setNestedPath,
+        setProcessFullDataset,
         setRowSourceMode,
         toggleEnumColumn,
         setPage,
@@ -460,11 +594,15 @@ function createErrorProcessedData(
   return {
     parseResult: { value: null, error: message },
     rows: [],
+    totalRows: 0,
     columns: [],
     allColumnCount: 0,
     arrayColumnCandidates: [],
     columnLimitWarning: null,
     columnValueOptions: {},
+    deferredStats: false,
+    isPreview: false,
+    processingWarnings: [],
     rowSource,
     shapeSummary: {
       rootType: "Needs JSON",
@@ -484,4 +622,36 @@ function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function fingerprintJsonInput(input: string) {
+  let hash = 2166136261
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return `${input.length.toString(36)}-${(hash >>> 0).toString(36)}`
+}
+
+function readSavedWorkspaceView(key: string): SavedWorkspaceView | null {
+  if (typeof window === "undefined") return null
+
+  try {
+    const raw = window.localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as SavedWorkspaceView) : null
+  } catch {
+    return null
+  }
+}
+
+function writeSavedWorkspaceView(key: string, value: SavedWorkspaceView) {
+  if (typeof window === "undefined") return
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Persistence pattern: local storage is opportunistic and must not block table use.
+  }
 }

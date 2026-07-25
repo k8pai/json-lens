@@ -44,6 +44,8 @@ export type RowSourceConfig = {
   mode: RowSourceMode
   nestedPath?: string
   columnLimit?: number
+  deferHeavyWork?: boolean
+  previewRowLimit?: number
 }
 
 export type ArrayPathCandidate = {
@@ -71,11 +73,15 @@ export type ArrayColumnCandidate = {
 export type JsonLensProcessedData = {
   parseResult: ParseResult
   rows: FlatRow[]
+  totalRows: number
   columns: string[]
   allColumnCount: number
   arrayColumnCandidates: ArrayColumnCandidate[]
   columnLimitWarning: string | null
   columnValueOptions: Record<string, string[]>
+  deferredStats: boolean
+  isPreview: boolean
+  processingWarnings: string[]
   rowSource: RowSourceConfig
   shapeSummary: ShapeSummary
   stats: ColumnStats[]
@@ -86,6 +92,7 @@ export type JsonLensProcessedData = {
 
 const DEFAULT_COLUMN_LIMIT = 200
 const MAX_TYPE_KEYS = 5000
+const HEAVY_STATS_CELL_LIMIT = 120_000
 
 export const SAMPLE_JSON = JSON.stringify(
   [
@@ -226,7 +233,13 @@ export function flattenValue(
 export function normalizeRows(value: unknown): FlatRow[] {
   const source = Array.isArray(value) ? value : [value]
 
-  return source.map((item, index) => ({
+  return normalizeArrayRows(source)
+}
+
+function normalizeArrayRows(source: unknown[], limit?: number): FlatRow[] {
+  const rows = typeof limit === "number" ? source.slice(0, limit) : source
+
+  return rows.map((item, index) => ({
     id: index + 1,
     original: item,
     flat: isRecord(item) ? flattenValue(item) : { value: item },
@@ -237,18 +250,27 @@ export function normalizeRowsForSource(
   value: unknown,
   config: RowSourceConfig,
   shape = detectJsonShape(value)
-): { rows: FlatRow[]; rowSource: RowSourceConfig } {
+): { rows: FlatRow[]; rowSource: RowSourceConfig; totalRows: number } {
   const mode = config.mode === "auto" ? shape.recommendedMode : config.mode
   const rowSource = { ...config, mode }
+  const limit = config.previewRowLimit
 
   if (mode === "array-items") {
     const source = Array.isArray(value) ? value : []
-    return { rows: normalizeRows(source), rowSource }
+    return {
+      rows: normalizeArrayRows(source, limit),
+      rowSource,
+      totalRows: source.length,
+    }
   }
 
   if (mode === "object-entries" && isRecord(value)) {
+    const entries = Object.entries(value)
+    const limitedEntries =
+      typeof limit === "number" ? entries.slice(0, limit) : entries
+
     return {
-      rows: Object.entries(value).map(([key, item], index) => ({
+      rows: limitedEntries.map(([key, item], index) => ({
         id: index + 1,
         original: item,
         flat: isRecord(item)
@@ -256,18 +278,22 @@ export function normalizeRowsForSource(
           : { key, value: item },
       })),
       rowSource,
+      totalRows: entries.length,
     }
   }
 
   if (mode === "nested-path") {
     const nestedValue = getJsonPathValue(value, config.nestedPath ?? "")
+    const source = Array.isArray(nestedValue) ? nestedValue : []
+
     return {
-      rows: Array.isArray(nestedValue) ? normalizeRows(nestedValue) : [],
+      rows: normalizeArrayRows(source, limit),
       rowSource,
+      totalRows: source.length,
     }
   }
 
-  return { rows: normalizeRows(value), rowSource }
+  return { rows: normalizeRows(value), rowSource, totalRows: 1 }
 }
 
 export function getColumns(rows: FlatRow[]) {
@@ -710,21 +736,38 @@ export function createJsonLensProcessedData(input: string): JsonLensProcessedDat
   return createJsonLensProcessedDataWithConfig(input, { mode: "auto" })
 }
 
+export type ProcessingUpdate = {
+  stage: "parse" | "shape" | "rows" | "columns" | "stats" | "done"
+  message: string
+  progress: number
+}
+
 export function createJsonLensProcessedDataWithConfig(
   input: string,
-  config: RowSourceConfig = { mode: "auto" }
+  config: RowSourceConfig = { mode: "auto" },
+  onProgress?: (update: ProcessingUpdate) => void
 ): JsonLensProcessedData {
+  onProgress?.({
+    stage: "parse",
+    message: "Parsing JSON",
+    progress: 10,
+  })
+
   const parseResult = parseJson(input)
 
   if (parseResult.error) {
     return {
       parseResult,
       rows: [],
+      totalRows: 0,
       columns: [],
       allColumnCount: 0,
       arrayColumnCandidates: [],
       columnLimitWarning: null,
       columnValueOptions: {},
+      deferredStats: false,
+      isPreview: false,
+      processingWarnings: [],
       rowSource: config,
       shapeSummary: {
         rootType: "Needs JSON",
@@ -741,36 +784,91 @@ export function createJsonLensProcessedDataWithConfig(
   }
 
   const value = parseResult.value
+  onProgress?.({
+    stage: "shape",
+    message: "Detecting JSON shape",
+    progress: 25,
+  })
   const shapeSummary = detectJsonShape(value)
-  const { rows, rowSource } = normalizeRowsForSource(value, config, shapeSummary)
+  onProgress?.({
+    stage: "rows",
+    message: "Preparing preview rows",
+    progress: 45,
+  })
+  const { rows, rowSource, totalRows } = normalizeRowsForSource(
+    value,
+    config,
+    shapeSummary
+  )
+  const isPreview = rows.length < totalRows
+  const processingWarnings: string[] = []
+
+  if (isPreview) {
+    processingWarnings.push(
+      `Previewing ${rows.length.toLocaleString()} of ${totalRows.toLocaleString()} rows. Process the full dataset when you are ready for complete filtering, stats, and exports.`
+    )
+  }
+
+  onProgress?.({
+    stage: "columns",
+    message: "Discovering columns",
+    progress: 65,
+  })
   const allColumns = getColumns(rows)
   const { columns, warning } = limitColumns(
     allColumns,
     config.columnLimit ?? DEFAULT_COLUMN_LIMIT
   )
   const jsonStats = countJsonStats(value)
+  const statsCellCount = rows.length * Math.max(columns.length, 1)
+  const deferredStats =
+    Boolean(config.deferHeavyWork) || statsCellCount > HEAVY_STATS_CELL_LIMIT
   const typeScript =
-    jsonStats.keys > MAX_TYPE_KEYS
-      ? `// Type generation skipped because this JSON has ${jsonStats.keys.toLocaleString()} keys.\n// Narrow the row source before generating TypeScript.`
+    deferredStats || jsonStats.keys > MAX_TYPE_KEYS
+      ? `// Type generation skipped for this large preview.\n// Narrow the row source or process the full dataset before generating TypeScript.`
       : generateTypes(value, "Root")
+
+  if (deferredStats) {
+    processingWarnings.push(
+      "Stats, enum options, and TypeScript generation are deferred in large-data mode."
+    )
+  }
+
+  onProgress?.({
+    stage: "stats",
+    message: deferredStats ? "Deferring expensive stats" : "Computing stats",
+    progress: 85,
+  })
+  onProgress?.({
+    stage: "done",
+    message: "Table data ready",
+    progress: 100,
+  })
 
   return {
     parseResult: { ...parseResult, value: null },
     rows,
+    totalRows,
     columns,
     allColumnCount: allColumns.length,
     arrayColumnCandidates: getArrayColumnCandidates(rows, allColumns),
     columnLimitWarning: warning,
-    columnValueOptions: getColumnValueOptions(rows, columns),
+    columnValueOptions: getColumnValueOptions(
+      deferredStats ? rows.slice(0, 500) : rows,
+      columns
+    ),
+    deferredStats,
+    isPreview,
+    processingWarnings,
     rowSource,
     shapeSummary,
-    stats: computeStats(rows, columns),
+    stats: deferredStats ? [] : computeStats(rows, columns),
     typeScript,
     jsonStats,
     sourceSummary:
       rowSource.mode === "nested-path" && config.nestedPath
-        ? `${config.nestedPath}: ${rows.length.toLocaleString()} rows`
-        : shapeSummary.description,
+      ? `${config.nestedPath}: ${rows.length.toLocaleString()} rows`
+      : shapeSummary.description,
   }
 }
 

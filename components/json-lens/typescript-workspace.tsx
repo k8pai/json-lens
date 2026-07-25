@@ -24,7 +24,9 @@ export function TypeScriptWorkspace() {
             TypeScript
           </CardTitle>
           <CardDescription>
-            Generate interfaces and type aliases from the current JSON shape.
+            {lens.deferredStats
+              ? "Generation is deferred in large-data preview mode."
+              : "Generate interfaces and type aliases from the current JSON shape."}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2">

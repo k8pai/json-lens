@@ -37,7 +37,7 @@ export function JsonWorkspace() {
             <Badge variant={lens.largeInputWarning ? "destructive" : "secondary"}>
               {lens.inputSizeLabel}
             </Badge>
-            {lens.isProcessing ? <span>Processing in background</span> : null}
+            {lens.isProcessing ? <span>{lens.processingProgressLabel}</span> : null}
           </div>
           <Button
             title="Format the JSON with indentation"

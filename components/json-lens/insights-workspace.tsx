@@ -23,9 +23,22 @@ export function InsightsWorkspace() {
           </CardTitle>
           <CardDescription>
             Frequencies are calculated from {lens.rows.length.toLocaleString()} normalized rows.
+            {lens.isPreview ? ` Previewing ${lens.totalRows.toLocaleString()} total rows.` : ""}
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {lens.deferredStats ? (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent>
+            <h2 className="font-semibold">Insights are deferred in preview mode</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Process the full dataset from the table page when you are ready to compute
+              complete frequencies, missing values, and warnings.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {lens.stats.map((stat) => (

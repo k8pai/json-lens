@@ -80,6 +80,9 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
     toast,
     isProcessing,
     inputSizeLabel,
+    isPreview,
+    processingProgressLabel,
+    totalRows,
   } = useJsonLens()
 
   return (
@@ -144,7 +147,14 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
               label="Source"
               value={parseResult.error ? "Needs JSON" : sourceSummary}
             />
-            <Metric label="Rows" value={rows.length.toLocaleString()} />
+            <Metric
+              label="Rows"
+              value={
+                isPreview
+                  ? `${rows.length.toLocaleString()} / ${totalRows.toLocaleString()}`
+                  : rows.length.toLocaleString()
+              }
+            />
             <Metric label="Columns" value={columns.length.toLocaleString()} />
             <Metric label="Keys" value={jsonStats?.keys.toLocaleString() ?? "0"} />
             <Metric label="Depth" value={jsonStats?.maxDepth.toLocaleString() ?? "0"} />
@@ -175,7 +185,7 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {isProcessing
-                      ? `Input size is ${inputSizeLabel}. The current table stays usable while parsing finishes.`
+                      ? `${processingProgressLabel}. Input size is ${inputSizeLabel}. The current table stays usable while parsing finishes.`
                       : largeInputWarning}
                   </p>
                 </CardContent>

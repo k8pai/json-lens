@@ -1,6 +1,7 @@
 import {
   createJsonLensProcessedDataWithConfig,
   type JsonLensProcessedData,
+  type ProcessingUpdate,
   type RowSourceConfig,
 } from "./json-lens"
 
@@ -14,7 +15,14 @@ export type WorkerResponse =
   | {
       id: number
       ok: true
+      progress: ProcessingUpdate
+      type: "progress"
+    }
+  | {
+      id: number
+      ok: true
       data: JsonLensProcessedData
+      type: "result"
     }
   | {
       id: number
@@ -30,7 +38,15 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     self.postMessage({
       id,
       ok: true,
-      data: createJsonLensProcessedDataWithConfig(input, config),
+      data: createJsonLensProcessedDataWithConfig(input, config, (progress) => {
+        self.postMessage({
+          id,
+          ok: true,
+          progress,
+          type: "progress",
+        } satisfies WorkerResponse)
+      }),
+      type: "result",
     } satisfies WorkerResponse)
   } catch (error) {
     self.postMessage({

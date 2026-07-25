@@ -10,7 +10,6 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react"
-import { flushSync } from "react-dom"
 import {
   ArrowDownIcon,
   ArrowLeftIcon,
@@ -47,7 +46,7 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import {
   compareValues,
@@ -96,6 +95,12 @@ type TableController = {
 const DEFAULT_COLUMN_WIDTH = 190
 const MIN_COLUMN_WIDTH = 120
 const MAX_COLUMN_WIDTH = 720
+const ESTIMATED_ROW_HEIGHT = 52
+const VIRTUAL_ROW_OVERSCAN = 10
+const HEADER_STRIP_CLASS = "sticky top-0 z-50 border-b bg-muted/95 backdrop-blur"
+const TABLE_SCROLL_CLASS = "relative isolate cursor-grab overflow-auto bg-card active:cursor-grabbing"
+const GRID_TABLE_CLASS = "w-full table-fixed border-collapse caption-bottom text-sm"
+const VALUE_CELL_CLASS = "overflow-hidden border-r px-2 align-top"
 
 const ROW_SOURCE_LABELS: Record<RowSourceMode, string> = {
   auto: "Auto",
@@ -107,6 +112,7 @@ const ROW_SOURCE_LABELS: Record<RowSourceMode, string> = {
 
 export function TableWorkspace() {
   const lens = useJsonLens()
+  const headerScrollRef = useRef<HTMLDivElement | null>(null)
   const topScrollRef = useRef<HTMLDivElement | null>(null)
   const tableScrollRef = useRef<HTMLDivElement | null>(null)
   const lastReorderSignatureRef = useRef<string | null>(null)
@@ -125,7 +131,6 @@ export function TableWorkspace() {
       : preferredParentColumn
   const tableWidth = useMemo(
     () =>
-      64 +
       lens.visibleColumns.reduce(
         (total, column) => total + getColumnWidth(lens.columnWidths, column),
         0
@@ -135,6 +140,7 @@ export function TableWorkspace() {
   const activeColumnFilters = Object.entries(lens.columnFilters).filter(
     ([, value]) => value.trim()
   )
+  const parentVirtualRows = useVirtualRows(lens.pagedRows.length)
 
   const subTableRows = useMemo(
     () =>
@@ -152,9 +158,11 @@ export function TableWorkspace() {
     lens.notify("Visible table copied as CSV.")
   }
 
-  function syncScroll(source: HTMLDivElement, target: HTMLDivElement | null) {
-    if (target && target.scrollLeft !== source.scrollLeft) {
-      target.scrollLeft = source.scrollLeft
+  function syncScroll(source: HTMLDivElement, ...targets: Array<HTMLDivElement | null>) {
+    for (const target of targets) {
+      if (target && target.scrollLeft !== source.scrollLeft) {
+        target.scrollLeft = source.scrollLeft
+      }
     }
   }
 
@@ -169,6 +177,7 @@ export function TableWorkspace() {
     function move(pointerEvent: globalThis.MouseEvent) {
       dragTarget.scrollLeft = startScrollLeft - (pointerEvent.pageX - startX)
       if (topScrollRef.current) topScrollRef.current.scrollLeft = dragTarget.scrollLeft
+      if (headerScrollRef.current) headerScrollRef.current.scrollLeft = dragTarget.scrollLeft
     }
 
     function stop() {
@@ -181,7 +190,7 @@ export function TableWorkspace() {
   }
 
   function reorderColumnLive(sourceColumn: string, targetColumn: string) {
-    runColumnMoveTransition(() => lens.reorderColumn(sourceColumn, targetColumn))
+    lens.reorderColumn(sourceColumn, targetColumn)
   }
 
   return (
@@ -243,46 +252,73 @@ export function TableWorkspace() {
               ref={topScrollRef}
               className="overflow-x-auto"
               onScroll={(event) =>
-                syncScroll(event.currentTarget, tableScrollRef.current)
+                syncScroll(
+                  event.currentTarget,
+                  tableScrollRef.current,
+                  headerScrollRef.current
+                )
               }
             >
               <div style={{ width: tableWidth, height: 1 }} />
             </div>
           </div>
+          <div className={HEADER_STRIP_CLASS}>
+            <div ref={headerScrollRef} className="overflow-hidden">
+              <table
+                className={GRID_TABLE_CLASS}
+                style={{ width: tableWidth, minWidth: tableWidth }}
+              >
+                <ColumnSizing
+                  columns={lens.visibleColumns}
+                  columnWidths={lens.columnWidths}
+                />
+                <thead>
+                  <tr className="border-b">
+                    {lens.visibleColumns.map((column) => (
+                      <ResizableColumnHead
+                        key={column}
+                        column={column}
+                        columns={lens.visibleColumns}
+                        columnWidths={lens.columnWidths}
+                        onResize={lens.setColumnWidths}
+                        onReorder={reorderColumnLive}
+                        onSort={() => lens.toggleSort(column)}
+                        draggedColumn={draggedColumn}
+                        setDraggedColumn={setDraggedColumn}
+                        lastReorderSignatureRef={lastReorderSignatureRef}
+                        sortState={lens.sortState}
+                      />
+                    ))}
+                  </tr>
+                </thead>
+              </table>
+            </div>
+          </div>
           <div
             ref={tableScrollRef}
-            className="max-h-[64vh] cursor-grab overflow-auto active:cursor-grabbing"
+            className={`${TABLE_SCROLL_CLASS} max-h-[64vh]`}
             onMouseDown={startDragScroll}
-            onScroll={(event) =>
-              syncScroll(event.currentTarget, topScrollRef.current)
-            }
+            onScroll={(event) => {
+              parentVirtualRows.handleScroll(event.currentTarget)
+              syncScroll(
+                event.currentTarget,
+                topScrollRef.current,
+                headerScrollRef.current
+              )
+            }}
           >
-            <Table style={{ width: tableWidth, minWidth: tableWidth }}>
-              <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
-                <TableRow className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
-                  <TableHead className="sticky left-0 z-20 w-16 bg-muted">#</TableHead>
-                  {lens.visibleColumns.map((column) => (
-                    <ResizableColumnHead
-                      key={column}
-                      column={column}
-                      columns={lens.visibleColumns}
-                      columnWidths={lens.columnWidths}
-                      onResize={lens.setColumnWidths}
-                      onReorder={reorderColumnLive}
-                      onSort={() => lens.toggleSort(column)}
-                      draggedColumn={draggedColumn}
-                      setDraggedColumn={setDraggedColumn}
-                      lastReorderSignatureRef={lastReorderSignatureRef}
-                      sortState={lens.sortState}
-                      transitionScope="parent"
-                    />
-                  ))}
-                </TableRow>
-              </TableHeader>
+            <table
+              className={GRID_TABLE_CLASS}
+              style={{ width: tableWidth, minWidth: tableWidth }}
+            >
+              <ColumnSizing
+                columns={lens.visibleColumns}
+                columnWidths={lens.columnWidths}
+              />
               <TableBody>
                 {lens.pagedRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={lens.visibleColumns.length + 1}>
+                    <TableCell colSpan={Math.max(1, lens.visibleColumns.length)}>
                       <Empty className="border-0">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -297,33 +333,45 @@ export function TableWorkspace() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  lens.pagedRows.map((row) => (
+                  <>
+                    {parentVirtualRows.topPadding ? (
+                      <TableRow aria-hidden="true">
+                        <TableCell
+                          className="p-0"
+                          colSpan={Math.max(1, lens.visibleColumns.length)}
+                          style={{ height: parentVirtualRows.topPadding }}
+                        />
+                      </TableRow>
+                    ) : null}
+                    {lens.pagedRows.slice(parentVirtualRows.start, parentVirtualRows.end).map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell className="sticky left-0 bg-card font-mono text-xs text-muted-foreground">
-                        {row.id}
-                      </TableCell>
                       {lens.visibleColumns.map((column) => (
                         <TableCell
                           key={column}
-                          className="align-top"
+                          className={VALUE_CELL_CLASS}
                           style={{
                             width: getColumnWidth(lens.columnWidths, column),
                             minWidth: getColumnWidth(lens.columnWidths, column),
-                            viewTransitionName: getColumnTransitionName(
-                              "parent",
-                              column,
-                              `row-${row.id}`
-                            ),
                           }}
                         >
                           <JsonValueCell value={row.flat[column]} />
                         </TableCell>
                       ))}
                     </TableRow>
-                  ))
+                    ))}
+                    {parentVirtualRows.bottomPadding ? (
+                      <TableRow aria-hidden="true">
+                        <TableCell
+                          className="p-0"
+                          colSpan={Math.max(1, lens.visibleColumns.length)}
+                          style={{ height: parentVirtualRows.bottomPadding }}
+                        />
+                      </TableRow>
+                    ) : null}
+                  </>
                 )}
               </TableBody>
-            </Table>
+            </table>
           </div>
           <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
@@ -357,7 +405,7 @@ export function TableWorkspace() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[10, 25, 50, 100].map((size) => (
+                  {[25, 50, 100, 250, 500, 1000].map((size) => (
                     <SelectItem key={size} value={String(size)}>
                       {size}
                     </SelectItem>
@@ -442,7 +490,6 @@ function ResizableColumnHead({
   onSort,
   setDraggedColumn,
   sortState,
-  transitionScope,
 }: {
   column: string
   columns: string[]
@@ -454,10 +501,14 @@ function ResizableColumnHead({
   onSort: () => void
   setDraggedColumn: (column: string | null) => void
   sortState: SortState
-  transitionScope: string
 }) {
   const width = getColumnWidth(columnWidths, column)
+  const columnIndex = columns.indexOf(column)
+  // Header cells paint in source order, so left columns need to sit above the
+  // neighbor on their right for centered resize handles to remain fully visible.
+  const headerStackLevel = 40 + Math.max(1, columns.length - columnIndex)
   const receivingDrop = Boolean(draggedColumn && draggedColumn !== column)
+  const sortActionLabel = getSortActionLabel(column, sortState)
 
   function startResize(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
@@ -527,23 +578,16 @@ function ResizableColumnHead({
 
   return (
     <TableHead
-      className="relative align-top sticky top-0 z-10 bg-muted/95 backdrop-blur"
-      style={{ width, minWidth: width }}
+      className="sticky top-0 overflow-visible border-r bg-muted/95 px-1 align-top backdrop-blur"
+      style={{ width, minWidth: width, zIndex: headerStackLevel }}
       onDragOver={reorderOnHover}
       onDrop={finishColumnDrag}
     >
       <div
         draggable
-        className={`flex h-9 cursor-grab items-center gap-1 rounded-md border bg-background px-2 pr-4 transition-colors active:cursor-grabbing ${receivingDrop ? "border-primary/60 bg-primary/5" : ""
+        className={`relative flex h-9 cursor-grab items-center rounded-md border bg-background py-0 pl-2 pr-10 transition-colors active:cursor-grabbing ${receivingDrop ? "border-primary/60 bg-primary/5" : ""
           }`}
         title={`Drag ${column} to reorder`}
-        style={{
-          viewTransitionName: getColumnTransitionName(
-            transitionScope,
-            column,
-            "header"
-          ),
-        }}
         onDragEnd={() => {
           lastReorderSignatureRef.current = null
           setDraggedColumn(null)
@@ -557,9 +601,9 @@ function ResizableColumnHead({
           variant="ghost"
           size="icon-sm"
           draggable={false}
-          className="shrink-0"
-          title={`Sort ${column}`}
-          aria-label={`Sort ${column}`}
+          className="absolute right-1.5 top-1/2 -translate-y-1/2"
+          title={sortActionLabel}
+          aria-label={sortActionLabel}
           onClick={onSort}
           onDragStart={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
@@ -577,15 +621,71 @@ function ResizableColumnHead({
       </div>
       <button
         type="button"
-        className="absolute bottom-2 right-0 top-2 z-30 w-3 cursor-col-resize touch-none rounded-sm outline-none transition-colors hover:bg-primary/30 focus-visible:bg-primary/40"
+        className="group/resize absolute right-[-6px] top-1/2 z-50 h-8 w-3 -translate-y-1/2 cursor-col-resize touch-none rounded-full outline-none transition-colors hover:bg-primary/10 focus-visible:bg-primary/15"
         title={`Resize ${column}`}
         aria-label={`Resize ${column}`}
         onMouseDown={startResize}
       >
-        <span className="mx-auto block h-full w-px bg-border" />
+        <span className="mx-auto block h-7 w-1 rounded-full bg-muted-foreground/40 transition-colors group-hover/resize:bg-primary/60" />
       </button>
     </TableHead>
   )
+}
+
+function getSortActionLabel(column: string, sortState: SortState) {
+  if (sortState?.column !== column) return `Sort ${column} ascending`
+  if (sortState.direction === "asc") return `Sort ${column} descending`
+  return `Clear sorting for ${column}`
+}
+
+function ColumnSizing({
+  columns,
+  columnWidths,
+}: {
+  columns: string[]
+  columnWidths: Record<string, number>
+}) {
+  return (
+    <colgroup>
+      {columns.map((column) => {
+        const width = getColumnWidth(columnWidths, column)
+
+        return <col key={column} style={{ width, minWidth: width }} />
+      })}
+    </colgroup>
+  )
+}
+
+function useVirtualRows(
+  rowCount: number,
+  rowHeight = ESTIMATED_ROW_HEIGHT,
+  overscan = VIRTUAL_ROW_OVERSCAN
+) {
+  const [scrollState, setScrollState] = useState({
+    scrollTop: 0,
+    viewportHeight: 640,
+  })
+  const visibleStart = Math.floor(scrollState.scrollTop / rowHeight)
+  const visibleEnd = Math.ceil(
+    (scrollState.scrollTop + scrollState.viewportHeight) / rowHeight
+  )
+  const start = Math.max(0, visibleStart - overscan)
+  const end = Math.min(rowCount, visibleEnd + overscan)
+
+  function handleScroll(element: HTMLDivElement) {
+    setScrollState({
+      scrollTop: element.scrollTop,
+      viewportHeight: element.clientHeight,
+    })
+  }
+
+  return {
+    start,
+    end,
+    topPadding: start * rowHeight,
+    bottomPadding: Math.max(0, (rowCount - end) * rowHeight),
+    handleScroll,
+  }
 }
 
 function getColumnWidth(widths: Record<string, number>, column: string) {
@@ -594,37 +694,6 @@ function getColumnWidth(widths: Record<string, number>, column: string) {
 
 function clampColumnWidth(width: number) {
   return Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, Math.round(width)))
-}
-
-function runColumnMoveTransition(update: () => void) {
-  const documentWithTransition = document as Document & {
-    startViewTransition?: (callback: () => void) => void
-  }
-
-  if (documentWithTransition.startViewTransition) {
-    documentWithTransition.startViewTransition(() => {
-      flushSync(update)
-    })
-    return
-  }
-
-  update()
-}
-
-function getColumnTransitionName(scope: string, column: string, part: string) {
-  return `json-lens-${scope}-${part}-${safeTransitionIdent(column)}`
-}
-
-function safeTransitionIdent(value: string) {
-  let hash = 0
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
-  }
-
-  const label = value.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 48) || "column"
-
-  return `${label}-${hash.toString(36)}`
 }
 
 function getOrderedColumns(columns: string[], columnOrder: string[]) {
@@ -712,6 +781,32 @@ function JsonSetupPanel() {
               </Select>
             </label>
           </div>
+          {lens.largeDataMode ? (
+            <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium">
+                  {lens.processFullDataset ? "Full dataset processing" : "Large-data preview mode"}
+                </p>
+                <p className="text-muted-foreground">
+                  {lens.processFullDataset
+                    ? "JSON Lens will compute the complete table. This can take longer for very large files."
+                    : `Showing up to ${lens.rows.length.toLocaleString()} preview rows before full processing.`}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={lens.processFullDataset ? "outline" : "default"}
+                title={
+                  lens.processFullDataset
+                    ? "Return to fast preview mode"
+                    : "Process the full dataset"
+                }
+                onClick={() => lens.setProcessFullDataset((current) => !current)}
+              >
+                {lens.processFullDataset ? "Use Preview" : "Process Full"}
+              </Button>
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-lg border bg-muted/30 p-4">
@@ -741,8 +836,18 @@ function JsonSetupPanel() {
               <span className="text-muted-foreground">Nested arrays</span>
               <span className="font-medium">{lens.shapeSummary.candidateArrays.length}</span>
             </div>
+            <div className="flex items-center justify-between gap-3 rounded-md bg-background px-3 py-2">
+              <span className="text-muted-foreground">Rows loaded</span>
+              <span className="font-medium">
+                {lens.rows.length.toLocaleString()} / {lens.totalRows.toLocaleString()}
+              </span>
+            </div>
           </div>
-          {[...lens.shapeSummary.warnings, lens.columnLimitWarning].filter(Boolean).map((warning) => (
+          {[
+            ...lens.shapeSummary.warnings,
+            ...lens.processingWarnings,
+            lens.columnLimitWarning,
+          ].filter(Boolean).map((warning) => (
             <p key={warning} className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
               {warning}
             </p>
@@ -842,13 +947,13 @@ function LocalDataTable({
   copyToast: (message: string) => void
 }) {
   const controller = useLocalTableController(rows, columns)
+  const headerScrollRef = useRef<HTMLDivElement | null>(null)
   const topScrollRef = useRef<HTMLDivElement | null>(null)
   const tableScrollRef = useRef<HTMLDivElement | null>(null)
   const lastReorderSignatureRef = useRef<string | null>(null)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const tableWidth = useMemo(
     () =>
-      64 +
       controller.visibleColumns.reduce(
         (total, column) => total + getColumnWidth(controller.columnWidths, column),
         0
@@ -858,15 +963,18 @@ function LocalDataTable({
   const activeColumnFilters = Object.entries(controller.columnFilters).filter(
     ([, value]) => value.trim()
   )
+  const subTableVirtualRows = useVirtualRows(controller.pagedRows.length)
 
   async function copyVisibleTable() {
     await copyText(rowsToCsv(controller.filteredRows, controller.visibleColumns))
     copyToast("Sub table copied as CSV.")
   }
 
-  function syncScroll(source: HTMLDivElement, target: HTMLDivElement | null) {
-    if (target && target.scrollLeft !== source.scrollLeft) {
-      target.scrollLeft = source.scrollLeft
+  function syncScroll(source: HTMLDivElement, ...targets: Array<HTMLDivElement | null>) {
+    for (const target of targets) {
+      if (target && target.scrollLeft !== source.scrollLeft) {
+        target.scrollLeft = source.scrollLeft
+      }
     }
   }
 
@@ -881,6 +989,7 @@ function LocalDataTable({
     function move(pointerEvent: globalThis.MouseEvent) {
       dragTarget.scrollLeft = startScrollLeft - (pointerEvent.pageX - startX)
       if (topScrollRef.current) topScrollRef.current.scrollLeft = dragTarget.scrollLeft
+      if (headerScrollRef.current) headerScrollRef.current.scrollLeft = dragTarget.scrollLeft
     }
 
     function stop() {
@@ -893,7 +1002,7 @@ function LocalDataTable({
   }
 
   function reorderColumnLive(sourceColumn: string, targetColumn: string) {
-    runColumnMoveTransition(() => controller.reorderColumn(sourceColumn, targetColumn))
+    controller.reorderColumn(sourceColumn, targetColumn)
   }
 
   return (
@@ -952,43 +1061,74 @@ function LocalDataTable({
           <div
             ref={topScrollRef}
             className="overflow-x-auto"
-            onScroll={(event) => syncScroll(event.currentTarget, tableScrollRef.current)}
+            onScroll={(event) =>
+              syncScroll(
+                event.currentTarget,
+                tableScrollRef.current,
+                headerScrollRef.current
+              )
+            }
           >
             <div style={{ width: tableWidth, height: 1 }} />
           </div>
         </div>
+        <div className={HEADER_STRIP_CLASS}>
+          <div ref={headerScrollRef} className="overflow-hidden">
+            <table
+              className={GRID_TABLE_CLASS}
+              style={{ width: tableWidth, minWidth: tableWidth }}
+            >
+              <ColumnSizing
+                columns={controller.visibleColumns}
+                columnWidths={controller.columnWidths}
+              />
+              <thead>
+                <tr className="border-b">
+                  {controller.visibleColumns.map((column) => (
+                    <ResizableColumnHead
+                      key={column}
+                      column={column}
+                      columns={controller.visibleColumns}
+                      columnWidths={controller.columnWidths}
+                      onResize={controller.setColumnWidths}
+                      onReorder={reorderColumnLive}
+                      onSort={() => controller.toggleSort(column)}
+                      draggedColumn={draggedColumn}
+                      setDraggedColumn={setDraggedColumn}
+                      lastReorderSignatureRef={lastReorderSignatureRef}
+                      sortState={controller.sortState}
+                    />
+                  ))}
+                </tr>
+              </thead>
+            </table>
+          </div>
+        </div>
         <div
           ref={tableScrollRef}
-          className="max-h-[48vh] cursor-grab overflow-auto active:cursor-grabbing"
+          className={`${TABLE_SCROLL_CLASS} max-h-[48vh]`}
           onMouseDown={startDragScroll}
-          onScroll={(event) => syncScroll(event.currentTarget, topScrollRef.current)}
+          onScroll={(event) => {
+            subTableVirtualRows.handleScroll(event.currentTarget)
+            syncScroll(
+              event.currentTarget,
+              topScrollRef.current,
+              headerScrollRef.current
+            )
+          }}
         >
-          <Table style={{ width: tableWidth, minWidth: tableWidth }}>
-            <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
-              <TableRow>
-                <TableHead className="sticky left-0 z-20 w-16 bg-muted">#</TableHead>
-                {controller.visibleColumns.map((column) => (
-                  <ResizableColumnHead
-                    key={column}
-                    column={column}
-                    columns={controller.visibleColumns}
-                    columnWidths={controller.columnWidths}
-                    onResize={controller.setColumnWidths}
-                    onReorder={reorderColumnLive}
-                    onSort={() => controller.toggleSort(column)}
-                    draggedColumn={draggedColumn}
-                    setDraggedColumn={setDraggedColumn}
-                    lastReorderSignatureRef={lastReorderSignatureRef}
-                    sortState={controller.sortState}
-                    transitionScope="subtable"
-                  />
-                ))}
-              </TableRow>
-            </TableHeader>
+          <table
+            className={GRID_TABLE_CLASS}
+            style={{ width: tableWidth, minWidth: tableWidth }}
+          >
+            <ColumnSizing
+              columns={controller.visibleColumns}
+              columnWidths={controller.columnWidths}
+            />
             <TableBody>
               {controller.pagedRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={controller.visibleColumns.length + 1}>
+                  <TableCell colSpan={Math.max(1, controller.visibleColumns.length)}>
                     <Empty className="border-0">
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
@@ -1001,33 +1141,45 @@ function LocalDataTable({
                   </TableCell>
                 </TableRow>
               ) : (
-                controller.pagedRows.map((row) => (
+                <>
+                  {subTableVirtualRows.topPadding ? (
+                    <TableRow aria-hidden="true">
+                      <TableCell
+                        className="p-0"
+                        colSpan={Math.max(1, controller.visibleColumns.length)}
+                        style={{ height: subTableVirtualRows.topPadding }}
+                      />
+                    </TableRow>
+                  ) : null}
+                  {controller.pagedRows.slice(subTableVirtualRows.start, subTableVirtualRows.end).map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="sticky left-0 bg-card font-mono text-xs text-muted-foreground">
-                      {row.id}
-                    </TableCell>
                     {controller.visibleColumns.map((column) => (
                       <TableCell
                         key={column}
-                        className="align-top"
+                        className={VALUE_CELL_CLASS}
                         style={{
                           width: getColumnWidth(controller.columnWidths, column),
                           minWidth: getColumnWidth(controller.columnWidths, column),
-                          viewTransitionName: getColumnTransitionName(
-                            "subtable",
-                            column,
-                            `row-${row.id}`
-                          ),
                         }}
                       >
                         <JsonValueCell value={row.flat[column]} />
                       </TableCell>
                     ))}
                   </TableRow>
-                ))
+                  ))}
+                  {subTableVirtualRows.bottomPadding ? (
+                    <TableRow aria-hidden="true">
+                      <TableCell
+                        className="p-0"
+                        colSpan={Math.max(1, controller.visibleColumns.length)}
+                        style={{ height: subTableVirtualRows.bottomPadding }}
+                      />
+                    </TableRow>
+                  ) : null}
+                </>
               )}
             </TableBody>
-          </Table>
+          </table>
         </div>
         <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
@@ -1061,7 +1213,7 @@ function LocalDataTable({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {[10, 25, 50, 100].map((size) => (
+                {[25, 50, 100, 250, 500, 1000].map((size) => (
                   <SelectItem key={size} value={String(size)}>
                     {size}
                   </SelectItem>

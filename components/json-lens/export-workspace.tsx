@@ -24,7 +24,9 @@ export function ExportWorkspace() {
       <ExportAction
         icon={Rows3Icon}
         title="Visible table"
-        description={`${lens.filteredRows.length.toLocaleString()} filtered rows as CSV.`}
+        description={`${lens.filteredRows.length.toLocaleString()} filtered rows as CSV${
+          lens.isPreview ? " from the current preview" : ""
+        }.`}
         primary="Download CSV"
         onPrimary={() =>
           downloadText(
@@ -42,7 +44,11 @@ export function ExportWorkspace() {
       <ExportAction
         icon={FileJsonIcon}
         title="Flattened JSON"
-        description="The current filtered table shape as JSON."
+        description={
+          lens.isPreview
+            ? "The current filtered preview shape as JSON."
+            : "The current filtered table shape as JSON."
+        }
         primary="Download JSON"
         onPrimary={() =>
           downloadText(
@@ -74,7 +80,11 @@ export function ExportWorkspace() {
       <ExportAction
         icon={DownloadIcon}
         title="TypeScript"
-        description="Generated interfaces and type aliases."
+        description={
+          lens.deferredStats
+            ? "Type generation is deferred in large-data preview mode."
+            : "Generated interfaces and type aliases."
+        }
         primary="Download .ts"
         onPrimary={() => downloadText("json-lens-types.ts", lens.typeScript, "text/typescript")}
         secondary="Copy types"
