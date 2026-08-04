@@ -80,6 +80,7 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
     toast,
     isProcessing,
     inputSizeLabel,
+    largeDataMode,
     isPreview,
     processingProgressLabel,
     totalRows,
@@ -177,14 +178,16 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
           <div className="min-h-0 flex-1 py-5">
             <WorkspaceNav pathname={pathname} />
 
-            {isProcessing || largeInputWarning ? (
+            {largeInputWarning ? (
               <Card className="mb-5 border-primary/20 bg-primary/5">
                 <CardContent>
                   <h2 className="font-semibold">
-                    {isProcessing ? "Processing JSON in the background" : "Large JSON loaded"}
+                    {largeDataMode && isProcessing
+                      ? "Processing JSON in the background"
+                      : "Large JSON loaded"}
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {isProcessing
+                    {largeDataMode && isProcessing
                       ? `${processingProgressLabel}. Input size is ${inputSizeLabel}. The current table stays usable while parsing finishes.`
                       : largeInputWarning}
                   </p>

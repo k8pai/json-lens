@@ -45,6 +45,7 @@ export function ActionButton({
         <Button
           type="button"
           variant={variant}
+          className="active:!translate-y-0"
           title={title}
           aria-label={title}
           onClick={onClick}
