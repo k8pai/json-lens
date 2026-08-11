@@ -101,6 +101,9 @@ const HEADER_STRIP_CLASS = "sticky top-0 z-50 border-b bg-muted/95 backdrop-blur
 const TABLE_SCROLL_CLASS = "relative isolate cursor-grab overflow-auto bg-card active:cursor-grabbing"
 const GRID_TABLE_CLASS = "w-full table-fixed border-collapse caption-bottom text-sm"
 const VALUE_CELL_CLASS = "overflow-hidden border-r px-2 align-top"
+// Stored widths remain the overflow baseline; the 100% minimum lets fixed-layout
+// tables distribute unused workspace width across a small visible column set.
+const FILL_WORKSPACE_MIN_WIDTH = "100%"
 
 const ROW_SOURCE_LABELS: Record<RowSourceMode, string> = {
   auto: "Auto",
@@ -259,14 +262,20 @@ export function TableWorkspace() {
                 )
               }
             >
-              <div style={{ width: tableWidth, height: 1 }} />
+              <div
+                style={{
+                  width: tableWidth,
+                  minWidth: FILL_WORKSPACE_MIN_WIDTH,
+                  height: 1,
+                }}
+              />
             </div>
           </div>
           <div className={HEADER_STRIP_CLASS}>
             <div ref={headerScrollRef} className="overflow-hidden">
               <table
                 className={GRID_TABLE_CLASS}
-                style={{ width: tableWidth, minWidth: tableWidth }}
+                style={{ width: tableWidth, minWidth: FILL_WORKSPACE_MIN_WIDTH }}
               >
                 <ColumnSizing
                   columns={lens.visibleColumns}
@@ -309,7 +318,7 @@ export function TableWorkspace() {
           >
             <table
               className={GRID_TABLE_CLASS}
-              style={{ width: tableWidth, minWidth: tableWidth }}
+              style={{ width: tableWidth, minWidth: FILL_WORKSPACE_MIN_WIDTH }}
             >
               <ColumnSizing
                 columns={lens.visibleColumns}
@@ -1069,14 +1078,20 @@ function LocalDataTable({
               )
             }
           >
-            <div style={{ width: tableWidth, height: 1 }} />
+            <div
+              style={{
+                width: tableWidth,
+                minWidth: FILL_WORKSPACE_MIN_WIDTH,
+                height: 1,
+              }}
+            />
           </div>
         </div>
         <div className={HEADER_STRIP_CLASS}>
           <div ref={headerScrollRef} className="overflow-hidden">
             <table
               className={GRID_TABLE_CLASS}
-              style={{ width: tableWidth, minWidth: tableWidth }}
+              style={{ width: tableWidth, minWidth: FILL_WORKSPACE_MIN_WIDTH }}
             >
               <ColumnSizing
                 columns={controller.visibleColumns}
@@ -1119,7 +1134,7 @@ function LocalDataTable({
         >
           <table
             className={GRID_TABLE_CLASS}
-            style={{ width: tableWidth, minWidth: tableWidth }}
+            style={{ width: tableWidth, minWidth: FILL_WORKSPACE_MIN_WIDTH }}
           >
             <ColumnSizing
               columns={controller.visibleColumns}

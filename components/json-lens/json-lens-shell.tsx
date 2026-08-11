@@ -134,7 +134,7 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
               ref={fileInputRef}
               className="hidden"
               type="file"
-              accept=".json,application/json"
+              accept=".json,.jsonl,.ndjson,application/json,application/x-ndjson"
               onChange={(event) => {
                 const file = event.target.files?.[0]
                 if (file) handleFile(file)

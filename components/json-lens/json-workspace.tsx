@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils"
 
 import { FieldValueExtractor } from "./field-value-extractor"
 import { useJsonLens } from "./json-lens-provider"
+import { SourceManagementPanel } from "./source-management-panel"
 
 type KeyCaseMode = "camel" | "pascal" | "snake" | "kebab" | "upper" | "lower"
 type JsonTransformMode =
@@ -429,6 +430,7 @@ export function JsonWorkspace() {
 
   return (
     <section className="space-y-4">
+      <SourceManagementPanel />
       {toolsPanel}
       <div className="grid gap-4 xl:grid-cols-2">
         {leftEditor}

@@ -33,7 +33,35 @@ import type { WorkerResponse } from "@/lib/json-lens.worker"
 const LARGE_INPUT_BYTES = 5 * 1024 * 1024
 const PREVIEW_ROW_LIMIT = 1000
 const WORKSPACE_STORAGE_PREFIX = "json-lens:view"
+const SNAPSHOT_STORAGE_KEY = "json-lens:snapshots"
 const initialProcessedData = createJsonLensProcessedData(SAMPLE_JSON)
+
+export type JsonSourceKind =
+  | "sample"
+  | "editor"
+  | "upload"
+  | "clipboard"
+  | "url"
+  | "ndjson"
+  | "snapshot"
+
+export type JsonSourceMetadata = {
+  kind: JsonSourceKind
+  label: string
+  detail?: string
+  fileName?: string
+  url?: string
+  sizeBytes: number
+  importedAt: string
+}
+
+export type JsonWorkspaceSnapshot = {
+  id: string
+  name: string
+  input: string
+  sourceMetadata: JsonSourceMetadata
+  createdAt: string
+}
 
 type SavedWorkspaceView = {
   columnFilters?: Record<string, string>
@@ -88,15 +116,25 @@ type JsonLensContextValue = {
   totalRows: number
   typeScript: string
   sourceSummary: string
+  sourceMetadata: JsonSourceMetadata
+  originalSourceMetadata: JsonSourceMetadata
+  originalJsonInput: string
+  snapshots: JsonWorkspaceSnapshot[]
   shapeSummary: JsonLensProcessedData["shapeSummary"]
   fileInputRef: RefObject<HTMLInputElement | null>
   beautifyJson: () => void
   handleFile: (file: File) => void
+  importFromClipboard: () => Promise<void>
+  importJsonFromUrl: (url: string) => Promise<void>
+  importNdjson: () => void
   loadSample: () => void
   minifyJson: () => void
   moveColumn: (column: string, direction: -1 | 1) => void
   notify: (message: string) => void
   reorderColumn: (sourceColumn: string, targetColumn: string) => void
+  resetToOriginalSource: () => void
+  restoreWorkspaceSnapshot: (id: string) => void
+  saveWorkspaceSnapshot: () => void
   setColumnWidths: Dispatch<SetStateAction<Record<string, number>>>
   setGlobalSearch: (value: string) => void
   setHiddenColumns: Dispatch<SetStateAction<Set<string>>>
@@ -113,7 +151,26 @@ type JsonLensContextValue = {
 const JsonLensContext = createContext<JsonLensContextValue | null>(null)
 
 export function JsonLensProvider({ children }: { children: ReactNode }) {
-  const [jsonInput, setJsonInput] = useState(SAMPLE_JSON)
+  const [jsonInput, setJsonInputState] = useState(SAMPLE_JSON)
+  const [sourceMetadata, setSourceMetadata] = useState<JsonSourceMetadata>(() =>
+    createSourceMetadata(SAMPLE_JSON, {
+      kind: "sample",
+      label: "Sample JSON",
+      detail: "Built-in starter dataset",
+      importedAt: "Session start",
+    })
+  )
+  const [originalJsonInput, setOriginalJsonInput] = useState(SAMPLE_JSON)
+  const [originalSourceMetadata, setOriginalSourceMetadata] =
+    useState<JsonSourceMetadata>(() =>
+      createSourceMetadata(SAMPLE_JSON, {
+        kind: "sample",
+        label: "Sample JSON",
+        detail: "Built-in starter dataset",
+        importedAt: "Session start",
+      })
+    )
+  const [snapshots, setSnapshots] = useState<JsonWorkspaceSnapshot[]>([])
   const [globalSearchValue, setGlobalSearchValue] = useState("")
   const [appliedGlobalSearchValue, setAppliedGlobalSearchValue] = useState("")
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
@@ -164,6 +221,12 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     () => `${WORKSPACE_STORAGE_PREFIX}:${fingerprintJsonInput(jsonInput)}`,
     [jsonInput]
   )
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setSnapshots(readWorkspaceSnapshots())
+    })
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -371,25 +434,224 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToast(""), 2200)
   }
 
+  function setJsonInput(value: SetStateAction<string>) {
+    if (typeof value === "function") {
+      setJsonInputState((current) => value(current))
+    } else {
+      setJsonInputState(value)
+      setSourceMetadata(
+        createSourceMetadata(value, {
+          kind: "editor",
+          label: "Editor JSON",
+          detail: "Edited in the source editor",
+        })
+      )
+    }
+    setPage(1)
+  }
+
+  function replaceJsonSource(
+    input: string,
+    metadata: JsonSourceMetadataInput,
+    options: { updateOriginal?: boolean } = { updateOriginal: true }
+  ) {
+    const nextMetadata = createSourceMetadata(input, metadata)
+
+    setJsonInputState(input)
+    setSourceMetadata(nextMetadata)
+    if (options.updateOriginal ?? true) {
+      setOriginalJsonInput(input)
+      setOriginalSourceMetadata(nextMetadata)
+    }
+    resetTableControls()
+    setPage(1)
+  }
+
   function handleFile(file: File) {
-    if (!file.name.toLowerCase().endsWith(".json")) {
-      notify("Please choose a .json file.")
+    const name = file.name.toLowerCase()
+    const isJsonFile = name.endsWith(".json")
+    const isNdjsonFile = name.endsWith(".ndjson") || name.endsWith(".jsonl")
+
+    if (!isJsonFile && !isNdjsonFile) {
+      notify("Please choose a .json, .ndjson, or .jsonl file.")
       return
     }
 
     const reader = new FileReader()
     reader.onload = () => {
-      setJsonInput(String(reader.result ?? ""))
-      setPage(1)
+      const text = String(reader.result ?? "")
+
+      if (isNdjsonFile) {
+        const converted = convertNdjsonToJson(text)
+        if (!converted.ok) {
+          notify(converted.error)
+          return
+        }
+        replaceJsonSource(converted.output, {
+          kind: "ndjson",
+          label: file.name,
+          fileName: file.name,
+          detail: `${converted.count.toLocaleString()} NDJSON record(s) converted`,
+        })
+        notify(`Loaded ${file.name} as JSON array.`)
+        return
+      }
+
+      replaceJsonSource(text, {
+        kind: "upload",
+        label: file.name,
+        fileName: file.name,
+        detail: "Uploaded local JSON file",
+      })
       notify(`Loaded ${file.name}`)
     }
     reader.readAsText(file)
   }
 
   function loadSample() {
-    setJsonInput(SAMPLE_JSON)
-    setPage(1)
+    replaceJsonSource(SAMPLE_JSON, {
+      kind: "sample",
+      label: "Sample JSON",
+      detail: "Built-in starter dataset",
+    })
     notify("Sample JSON loaded.")
+  }
+
+  async function importFromClipboard() {
+    if (!navigator.clipboard?.readText) {
+      notify("Clipboard import is unavailable in this browser.")
+      return
+    }
+
+    try {
+      const input = await navigator.clipboard.readText()
+      if (!input.trim()) {
+        notify("Clipboard is empty.")
+        return
+      }
+
+      replaceJsonSource(input, {
+        kind: "clipboard",
+        label: "Clipboard JSON",
+        detail: "Imported from clipboard",
+      })
+      notify("Clipboard JSON imported.")
+    } catch {
+      notify("Clipboard permission was denied.")
+    }
+  }
+
+  async function importJsonFromUrl(url: string) {
+    const trimmedUrl = url.trim()
+    if (!trimmedUrl) {
+      notify("Enter a JSON URL first.")
+      return
+    }
+
+    try {
+      setIsProcessing(true)
+      setProcessingProgress({
+        stage: "parse",
+        message: "Fetching JSON URL",
+        progress: 5,
+      })
+
+      const response = await fetch("/api/json/import-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmedUrl }),
+      })
+      const payload = (await response.json()) as
+        | {
+            ok: true
+            text: string
+            bytes: number
+            contentType: string
+            finalUrl: string
+          }
+        | { ok: false; error: string }
+
+      if (!payload.ok) {
+        notify(payload.error || "URL import failed.")
+        return
+      }
+
+      if (!response.ok) {
+        notify("URL import failed.")
+        return
+      }
+
+      replaceJsonSource(payload.text, {
+        kind: "url",
+        label: new URL(payload.finalUrl).hostname,
+        url: payload.finalUrl,
+        detail: payload.contentType || "Imported from URL",
+      })
+      notify(`Imported ${formatBytes(payload.bytes)} from URL.`)
+    } catch {
+      notify("URL import failed.")
+    } finally {
+      setIsProcessing(false)
+      setProcessingProgress(null)
+    }
+  }
+
+  function importNdjson() {
+    const converted = convertNdjsonToJson(jsonInput)
+    if (!converted.ok) {
+      notify(converted.error)
+      return
+    }
+
+    replaceJsonSource(converted.output, {
+      kind: "ndjson",
+      label: "NDJSON import",
+      detail: `${converted.count.toLocaleString()} record(s) converted from editor text`,
+    })
+    notify("NDJSON converted to JSON array.")
+  }
+
+  function resetToOriginalSource() {
+    replaceJsonSource(originalJsonInput, originalSourceMetadata, {
+      updateOriginal: false,
+    })
+    notify(`Reset to ${originalSourceMetadata.label}.`)
+  }
+
+  function saveWorkspaceSnapshot() {
+    const snapshot: JsonWorkspaceSnapshot = {
+      id: createSnapshotId(),
+      name: `${sourceMetadata.label} - ${new Date().toLocaleString()}`,
+      input: jsonInput,
+      sourceMetadata,
+      createdAt: new Date().toISOString(),
+    }
+    const nextSnapshots = [snapshot, ...snapshots].slice(0, 12)
+
+    setSnapshots(nextSnapshots)
+    writeWorkspaceSnapshots(nextSnapshots)
+    notify("Workspace snapshot saved.")
+  }
+
+  function restoreWorkspaceSnapshot(id: string) {
+    const snapshot = snapshots.find((item) => item.id === id)
+    if (!snapshot) {
+      notify("Snapshot was not found.")
+      return
+    }
+
+    replaceJsonSource(
+      snapshot.input,
+      {
+        ...snapshot.sourceMetadata,
+        kind: "snapshot",
+        label: snapshot.name,
+        detail: `Snapshot saved ${formatTimestamp(snapshot.createdAt)}`,
+        importedAt: new Date().toISOString(),
+      },
+      { updateOriginal: true }
+    )
+    notify("Workspace snapshot restored.")
   }
 
   function updateFilter(column: string, value: string) {
@@ -550,15 +812,25 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
         totalRows,
         typeScript,
         sourceSummary,
+        sourceMetadata,
+        originalSourceMetadata,
+        originalJsonInput,
+        snapshots,
         shapeSummary,
         fileInputRef,
         beautifyJson,
         handleFile,
+        importFromClipboard,
+        importJsonFromUrl,
+        importNdjson,
         loadSample,
         minifyJson,
         moveColumn,
         notify,
         reorderColumn,
+        resetToOriginalSource,
+        restoreWorkspaceSnapshot,
+        saveWorkspaceSnapshot,
         setColumnWidths,
         setGlobalSearch,
         setHiddenColumns,
@@ -635,6 +907,68 @@ function fingerprintJsonInput(input: string) {
   return `${input.length.toString(36)}-${(hash >>> 0).toString(36)}`
 }
 
+function createSourceMetadata(
+  input: string,
+  metadata: JsonSourceMetadataInput
+): JsonSourceMetadata {
+  return {
+    ...metadata,
+    importedAt: metadata.importedAt ?? new Date().toISOString(),
+    sizeBytes: new Blob([input]).size,
+  }
+}
+
+type JsonSourceMetadataInput = Omit<JsonSourceMetadata, "importedAt" | "sizeBytes"> & {
+  importedAt?: string
+}
+
+function convertNdjsonToJson(
+  input: string
+): { ok: true; output: string; count: number } | { ok: false; error: string } {
+  const lines = input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (!lines.length) {
+    return { ok: false, error: "Paste or upload NDJSON records first." }
+  }
+
+  const records: unknown[] = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    try {
+      records.push(JSON.parse(lines[index]))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid JSON record."
+      return {
+        ok: false,
+        error: `Line ${index + 1} is not valid NDJSON. ${message}`,
+      }
+    }
+  }
+
+  return { ok: true, output: stringifyPretty(records), count: records.length }
+}
+
+function createSnapshotId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID()
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
+function formatTimestamp(timestamp: string) {
+  if (!timestamp) return "earlier"
+
+  try {
+    return new Date(timestamp).toLocaleString()
+  } catch {
+    return timestamp
+  }
+}
+
 function readSavedWorkspaceView(key: string): SavedWorkspaceView | null {
   if (typeof window === "undefined") return null
 
@@ -653,5 +987,29 @@ function writeSavedWorkspaceView(key: string, value: SavedWorkspaceView) {
     window.localStorage.setItem(key, JSON.stringify(value))
   } catch {
     // Persistence pattern: local storage is opportunistic and must not block table use.
+  }
+}
+
+function readWorkspaceSnapshots(): JsonWorkspaceSnapshot[] {
+  if (typeof window === "undefined") return []
+
+  try {
+    const raw = window.localStorage.getItem(SNAPSHOT_STORAGE_KEY)
+    if (!raw) return []
+
+    const parsed = JSON.parse(raw) as JsonWorkspaceSnapshot[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function writeWorkspaceSnapshots(snapshots: JsonWorkspaceSnapshot[]) {
+  if (typeof window === "undefined") return
+
+  try {
+    window.localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshots))
+  } catch {
+    // Snapshot persistence is useful, but local storage limits should not break JSON editing.
   }
 }
