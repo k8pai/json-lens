@@ -341,56 +341,56 @@ Detect invalid JSON, explain why it failed, and offer safe repair paths without 
 
 Description: Validate input with strict JSON semantics and block downstream operations when parsing fails.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F012"></a>
 #### F012 - Line and column parse errors
 
 Description: Report the exact line and column for parse failures so users can fix source text quickly.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F013"></a>
 #### F013 - Detect trailing commas
 
 Description: Identify trailing commas as a common JSON-like input issue and offer a repair preview.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F014"></a>
 #### F014 - Detect single-quoted strings
 
 Description: Identify strings written with single quotes and explain that strict JSON requires double quotes.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F015"></a>
 #### F015 - Detect unquoted object keys
 
 Description: Find object keys that are valid JavaScript but invalid JSON and suggest a safe quoted repair.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F016"></a>
 #### F016 - Detect comments in JSON-like input
 
 Description: Identify line and block comments that prevent strict JSON parsing.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F017"></a>
 #### F017 - Detect duplicate object keys
 
 Description: Warn when the same key appears more than once in the same object before JSON.parse discards evidence.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F018"></a>
 #### F018 - Apply repair preview
 
 Description: Show proposed repaired JSON and require user confirmation before mutating the active document.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F019"></a>
 #### F019 - Validate against JSON Schema
@@ -404,7 +404,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Export validation errors, warnings, affected paths, and summary counts as a reusable report.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="viewing-navigation"></a>
@@ -417,14 +417,14 @@ Make JSON readable and navigable at small and large sizes.
 
 Description: Format the active document with stable indentation while preserving data values exactly.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F022"></a>
 #### F022 - Minify JSON
 
 Description: Remove whitespace for compact transfer or storage without changing document semantics.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F023"></a>
 #### F023 - Toggle indentation width
@@ -494,7 +494,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Render safe previews for massive documents instead of trying to display everything immediately.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="query-extraction"></a>
@@ -507,7 +507,7 @@ Let users retrieve values, subdocuments, and row sets without writing one-off sc
 
 Description: Extract values by exact, case-sensitive field name and group them by structural path.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F034"></a>
 #### F034 - Dot-path query
@@ -583,14 +583,14 @@ Turn arrays and nested records into a usable table while preserving the source p
 
 Description: Find the best array or record collection to represent as table rows.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F044"></a>
 #### F044 - Flatten rows for display
 
 Description: Render nested record fields as columns without destructively changing the active JSON.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F045"></a>
 #### F045 - Preserve source row path
@@ -604,28 +604,28 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Create columns from observed keys and paths across the selected row set.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F047"></a>
 #### F047 - Sort table rows
 
 Description: Sort rows deterministically with type-aware ordering and stable tie handling.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F048"></a>
 #### F048 - Filter table columns
 
 Description: Filter by column value while keeping row identity and source path intact.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F049"></a>
 #### F049 - Hide and show columns
 
 Description: Let users control visible columns without changing the underlying data.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F050"></a>
 #### F050 - Column frequency summary
@@ -673,7 +673,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Convert keys to camelCase, PascalCase, snake_case, kebab-case, or CONSTANT_CASE.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F056"></a>
 #### F056 - Remove keys
@@ -701,21 +701,21 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Convert nested object paths into flat keys for export or tabular workflows.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F060"></a>
 #### F060 - Unflatten object
 
 Description: Rebuild nested objects from flat path-like keys using a chosen delimiter or path mode.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F061"></a>
 #### F061 - Explode array items into rows
 
 Description: Turn array elements into separate records while preserving parent context.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F062"></a>
 #### F062 - Group rows into nested arrays
@@ -743,7 +743,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Sort object properties consistently for readable diffs and deterministic exports.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F066"></a>
 #### F066 - Sort arrays by field
@@ -819,35 +819,35 @@ Compare documents, generate patches, and apply controlled merges.
 
 Description: Load document A and document B and show structural and value differences.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F076"></a>
 #### F076 - Show added paths
 
 Description: List paths that exist only in the comparison document.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F077"></a>
 #### F077 - Show removed paths
 
 Description: List paths that existed in the base document but not the comparison document.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F078"></a>
 #### F078 - Show changed values
 
 Description: Show before-and-after values for paths present in both documents with different values.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F079"></a>
 #### F079 - Ignore key order
 
 Description: Compare objects semantically without treating property order as a difference.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F080"></a>
 #### F080 - Compare arrays by identity key
@@ -902,7 +902,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Generate stable TypeScript type aliases or interfaces from current JSON shape.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F087"></a>
 #### F087 - Generate Zod schema
@@ -957,7 +957,7 @@ Move JSON and derived results into practical external formats.
 
 Description: Download the active document as JSON using the selected formatting mode.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F094"></a>
 #### F094 - Export selected subtree
@@ -971,7 +971,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Convert tabular data to CSV with predictable escaping and nested-value handling.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F096"></a>
 #### F096 - Export TSV
@@ -999,14 +999,14 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Download TypeScript, JSON Schema, Zod, or OpenAPI output from contract workflows.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F100"></a>
 #### F100 - Copy output to clipboard
 
 Description: Copy generated outputs with visible success and failure feedback.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="insights-quality"></a>
@@ -1019,7 +1019,7 @@ Summarize structure, data quality, and performance characteristics.
 
 Description: Show key count, value count, max depth, object count, array count, and primitive count.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F102"></a>
 #### F102 - Missing-field report
@@ -1040,7 +1040,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Show common values and their counts for selected paths or columns.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F105"></a>
 #### F105 - Duplicate record detection
@@ -1081,7 +1081,7 @@ Protect sensitive payloads through local-first processing and explicit redaction
 
 Description: Keep payload work in the browser unless a user explicitly chooses backend processing.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F110"></a>
 #### F110 - Redaction preview
@@ -1253,21 +1253,21 @@ Keep the UI responsive when documents are large or operations are expensive.
 
 Description: Parse large inputs outside the main React thread to avoid freezing the interface.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F132"></a>
 #### F132 - Worker-backed flattening
 
 Description: Generate table rows and columns in a worker for large nested arrays.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F133"></a>
 #### F133 - Worker-backed extraction
 
 Description: Run expensive field extraction and query traversal in a worker.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F134"></a>
 #### F134 - Worker-backed export
@@ -1288,7 +1288,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Render only visible rows while preserving sorting, filtering, and selection behavior.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F137"></a>
 #### F137 - Cancelable long operations
@@ -1350,7 +1350,7 @@ Tracking: Status = Planned. Commit ID = TBD.
 
 Description: Keep npm run lint and npm run build as baseline verification for roadmap-related implementation.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 ## Suggested Implementation Order
 

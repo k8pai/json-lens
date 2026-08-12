@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils"
 import { FieldValueExtractor } from "./field-value-extractor"
 import { useJsonLens } from "./json-lens-provider"
 import { SourceManagementPanel } from "./source-management-panel"
+import { ValidationRepairPanel } from "./validation-repair-panel"
 
 type KeyCaseMode = "camel" | "pascal" | "snake" | "kebab" | "upper" | "lower"
 type JsonTransformMode =
@@ -436,6 +437,14 @@ export function JsonWorkspace() {
         {leftEditor}
         {rightPanel}
       </div>
+      <ValidationRepairPanel
+        sourceJson={lens.jsonInput}
+        notify={lens.notify}
+        onApplyRepair={(repairedJson) => {
+          lens.setJsonInput(repairedJson)
+          clearDiffResult()
+        }}
+      />
       <FieldValueExtractor sourceJson={lens.jsonInput} notify={lens.notify} />
       {comparisonSummary || diffRows.length ? (
         <DiffResultTable
