@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react"
 import {
   BracesIcon,
+  BracketsIcon,
   CaseSensitiveIcon,
   ChevronDownIcon,
   ClipboardIcon,
   EraserIcon,
+  FileCheck2Icon,
   FileJsonIcon,
   Wand2Icon,
   WrapTextIcon,
+  XIcon,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -24,14 +27,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
 import { copyText, isRecord, parseJson, stringifyPretty } from "@/lib/json-lens"
+import {
+  buildJsonSourceMap,
+  getRangeForDiffKind,
+  type JsonSourceMap,
+  type JsonTextRange,
+} from "@/lib/json-source-map"
 import { cn } from "@/lib/utils"
+import type { JsonValidationReport } from "@/lib/json-validation"
 
-import { FieldValueExtractor } from "./field-value-extractor"
+import {
+  FieldExtractionResultPanel,
+  FieldValueExtractor,
+  type FieldExtractionResult,
+} from "./field-value-extractor"
+import { JsonCodeEditor, type JsonEditorMarker } from "./json-code-editor"
 import { useJsonLens } from "./json-lens-provider"
 import { SourceManagementPanel } from "./source-management-panel"
-import { ValidationRepairPanel } from "./validation-repair-panel"
+import {
+  ValidationRepairPanel,
+  ValidationReportPanel,
+} from "./validation-repair-panel"
 
 type KeyCaseMode = "camel" | "pascal" | "snake" | "kebab" | "upper" | "lower"
 type JsonTransformMode =
@@ -55,6 +72,7 @@ type JsonValueType =
   | "number"
   | "object"
   | "string"
+type ActiveJsonTool = "extract" | "validate" | null
 
 type JsonDiffRow = {
   id: string
@@ -64,6 +82,8 @@ type JsonDiffRow = {
   rightValue: string
   leftType: JsonValueType
   rightType: JsonValueType
+  leftRange?: JsonTextRange
+  rightRange?: JsonTextRange
 }
 
 const RIGHT_INPUT_LIMIT_BYTES = 5 * 1024 * 1024
@@ -125,6 +145,12 @@ export function JsonWorkspace() {
   const [outputJson, setOutputJson] = useState("")
   const [comparisonSummary, setComparisonSummary] = useState("")
   const [diffRows, setDiffRows] = useState<JsonDiffRow[]>([])
+  const [validationReport, setValidationReport] =
+    useState<JsonValidationReport | null>(null)
+  const [extractionResult, setExtractionResult] =
+    useState<FieldExtractionResult | null>(null)
+  const [activeTool, setActiveTool] = useState<ActiveJsonTool>(null)
+  const [activeMarkerId, setActiveMarkerId] = useState<string | undefined>()
   const [activeDiffTags, setActiveDiffTags] = useState<Set<JsonDiffKind>>(
     () => new Set()
   )
@@ -138,10 +164,22 @@ export function JsonWorkspace() {
 
     return diffRows.filter((row) => activeDiffTags.has(row.kind))
   }, [activeDiffTags, diffRows])
+  const sourceEditorMarkers = useMemo(
+    () => [
+      ...createValidationMarkers(validationReport),
+      ...createDiffMarkers(filteredDiffRows, "left"),
+    ],
+    [filteredDiffRows, validationReport]
+  )
+  const outputEditorMarkers = useMemo(
+    () => createDiffMarkers(filteredDiffRows, "right"),
+    [filteredDiffRows]
+  )
 
   function clearDiffResult() {
     setComparisonSummary("")
     setDiffRows([])
+    setActiveMarkerId(undefined)
   }
 
   function toggleDiffTag(kind: JsonDiffKind) {
@@ -189,6 +227,7 @@ export function JsonWorkspace() {
     }
 
     setOutputJson(formatted)
+    setActiveTool(null)
     clearDiffResult()
     lens.notify(`Converted field names to ${getKeyCaseLabel(mode)}.`)
   }
@@ -213,7 +252,13 @@ export function JsonWorkspace() {
       return
     }
 
-    const nextRows = compareJsonValues(left.value, right.value)
+    const leftSourceMap = buildJsonSourceMap(lens.jsonInput)
+    const rightSourceMap = buildJsonSourceMap(outputJson)
+    const nextRows = attachDiffRanges(
+      compareJsonValues(left.value, right.value),
+      leftSourceMap,
+      rightSourceMap
+    )
 
     setDiffRows(nextRows)
     setComparisonSummary(nextRows.length ? "" : "No differences found.")
@@ -237,6 +282,8 @@ export function JsonWorkspace() {
 
   function clearSourceJson() {
     lens.setJsonInput("")
+    setValidationReport(null)
+    setExtractionResult(null)
     clearDiffResult()
   }
 
@@ -256,6 +303,11 @@ export function JsonWorkspace() {
   function clearOutputJson() {
     setOutputJson("")
     clearDiffResult()
+  }
+
+  function toggleActiveTool(tool: Exclude<ActiveJsonTool, null>) {
+    setActiveTool((current) => (current === tool ? null : tool))
+    setActiveMarkerId(undefined)
   }
 
   function formatLocalJson(
@@ -358,6 +410,36 @@ export function JsonWorkspace() {
           <BracesIcon data-icon="inline-start" />
           Diff
         </Button>
+        <Button
+          type="button"
+          variant={activeTool === "extract" ? "secondary" : "outline"}
+          size="sm"
+          className={cn(
+            TOOL_CHIP_CLASS,
+            activeTool === "extract" && "border-primary/50 bg-primary/10 text-primary"
+          )}
+          title="Open advanced JSON extraction"
+          aria-pressed={activeTool === "extract"}
+          onClick={() => toggleActiveTool("extract")}
+        >
+          <BracketsIcon data-icon="inline-start" />
+          Extract
+        </Button>
+        <Button
+          type="button"
+          variant={activeTool === "validate" ? "secondary" : "outline"}
+          size="sm"
+          className={cn(
+            TOOL_CHIP_CLASS,
+            activeTool === "validate" && "border-primary/50 bg-primary/10 text-primary"
+          )}
+          title="Open JSON validation and repair"
+          aria-pressed={activeTool === "validate"}
+          onClick={() => toggleActiveTool("validate")}
+        >
+          <FileCheck2Icon data-icon="inline-start" />
+          Validate
+        </Button>
       </CardContent>
     </Card>
   )
@@ -382,12 +464,16 @@ export function JsonWorkspace() {
         />
       </CardHeader>
       <CardContent>
-        <Textarea
-          className="h-[56vh] min-h-80 max-h-[840px] resize-y overflow-auto font-mono text-sm leading-6"
-          spellCheck={false}
+        <JsonCodeEditor
+          aria-label="Source JSON editor"
+          activeMarkerId={activeMarkerId}
+          markers={sourceEditorMarkers}
           value={lens.jsonInput}
-          onChange={(event) => {
-            lens.setJsonInput(event.target.value)
+          onContextCopy={lens.notify}
+          onChange={(value) => {
+            lens.setJsonInput(value)
+            setValidationReport(null)
+            setExtractionResult(null)
             clearDiffResult()
           }}
         />
@@ -402,26 +488,40 @@ export function JsonWorkspace() {
           <FileJsonIcon className="size-4" />
           Output JSON
         </CardTitle>
-        <JsonEditorActions
-          disabled={disableLargeOutputOperation}
-          hasValue={Boolean(outputJson.trim())}
-          onBeautify={beautifyOutputJson}
-          onCopy={copyOutputJson}
-          onMinify={minifyOutputJson}
-          onClear={clearOutputJson}
-          onTransform={(mode) =>
-            transformLocalJson(outputJson, setOutputJson, mode)
-          }
-        />
+        <div className="flex items-center gap-1.5">
+          <JsonEditorActions
+            disabled={disableLargeOutputOperation}
+            hasValue={Boolean(outputJson.trim())}
+            onBeautify={beautifyOutputJson}
+            onCopy={copyOutputJson}
+            onMinify={minifyOutputJson}
+            onClear={clearOutputJson}
+            onTransform={(mode) =>
+              transformLocalJson(outputJson, setOutputJson, mode)
+            }
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close and clear Output JSON"
+            title="Close and clear Output JSON"
+            onClick={clearOutputJson}
+          >
+            <XIcon />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
-        <Textarea
-          className="h-[56vh] min-h-80 max-h-[840px] resize-y overflow-auto font-mono text-sm leading-6"
+        <JsonCodeEditor
+          aria-label="Output JSON editor"
+          activeMarkerId={activeMarkerId}
+          markers={outputEditorMarkers}
           placeholder="Paste a second JSON here, or generate output from a top operation."
-          spellCheck={false}
           value={outputJson}
-          onChange={(event) => {
-            setOutputJson(event.target.value)
+          onContextCopy={lens.notify}
+          onChange={(value) => {
+            setOutputJson(value)
             clearDiffResult()
           }}
         />
@@ -429,23 +529,54 @@ export function JsonWorkspace() {
     </Card>
   )
 
+  const activeToolPanel =
+    activeTool === "extract" ? (
+      <FieldValueExtractor
+        sourceJson={lens.jsonInput}
+        result={extractionResult}
+        notify={lens.notify}
+        onClose={() => setActiveTool(null)}
+        onResultChange={setExtractionResult}
+      />
+    ) : activeTool === "validate" ? (
+      <ValidationRepairPanel
+        sourceJson={lens.jsonInput}
+        report={validationReport}
+        notify={lens.notify}
+        onClose={() => setActiveTool(null)}
+        onReportChange={setValidationReport}
+      />
+    ) : null
+
+  const contextualRightPanel =
+    activeTool === "extract" && extractionResult ? (
+      <FieldExtractionResultPanel result={extractionResult} notify={lens.notify} />
+    ) : activeTool === "validate" && validationReport ? (
+      <ValidationReportPanel
+        sourceJson={lens.jsonInput}
+        report={validationReport}
+        notify={lens.notify}
+        onApplyRepair={(repairedJson) => {
+          lens.setJsonInput(repairedJson)
+          setValidationReport(null)
+          setExtractionResult(null)
+          clearDiffResult()
+        }}
+        onSelectIssue={(issue) => setActiveMarkerId(`validation-${issue.id}`)}
+      />
+    ) : activeTool === null && outputJson.trim() ? (
+      rightPanel
+    ) : null
+
   return (
     <section className="space-y-4">
       <SourceManagementPanel />
       {toolsPanel}
-      <div className="grid gap-4 xl:grid-cols-2">
+      {activeToolPanel}
+      <div className={cn("grid gap-4", contextualRightPanel && "xl:grid-cols-2")}>
         {leftEditor}
-        {rightPanel}
+        {contextualRightPanel}
       </div>
-      <ValidationRepairPanel
-        sourceJson={lens.jsonInput}
-        notify={lens.notify}
-        onApplyRepair={(repairedJson) => {
-          lens.setJsonInput(repairedJson)
-          clearDiffResult()
-        }}
-      />
-      <FieldValueExtractor sourceJson={lens.jsonInput} notify={lens.notify} />
       {comparisonSummary || diffRows.length ? (
         <DiffResultTable
           activeTags={activeDiffTags}
@@ -453,6 +584,7 @@ export function JsonWorkspace() {
           filteredRows={filteredDiffRows}
           message={comparisonSummary}
           rows={diffRows}
+          onSelectRow={(row) => setActiveMarkerId(`diff-${row.id}`)}
           onToggleTag={toggleDiffTag}
         />
       ) : null}
@@ -467,12 +599,14 @@ function DiffResultTable({
   message,
   rows,
   onToggleTag,
+  onSelectRow,
 }: {
   activeTags: Set<JsonDiffKind>
   counts: Record<JsonDiffKind, number>
   filteredRows: JsonDiffRow[]
   message: string
   rows: JsonDiffRow[]
+  onSelectRow: (row: JsonDiffRow) => void
   onToggleTag: (kind: JsonDiffKind) => void
 }) {
   const showingAll = activeTags.size === 0
@@ -543,7 +677,12 @@ function DiffResultTable({
                 <TableBody>
                   {filteredRows.length ? (
                     filteredRows.map((row) => (
-                      <TableRow key={row.id}>
+                      <TableRow
+                        key={row.id}
+                        className="cursor-pointer"
+                        title="Jump to this diff in the JSON editors"
+                        onClick={() => onSelectRow(row)}
+                      >
                         <TableCell>
                           <Badge variant="outline" className="rounded-full">
                             {getDiffTagLabel(row.kind)}
@@ -684,6 +823,80 @@ function JsonEditorActions({
 
 function getJsonTransformLabel(mode: JsonTransformMode) {
   return JSON_TRANSFORM_OPTIONS.find((option) => option.mode === mode)?.label ?? mode
+}
+
+function createValidationMarkers(
+  report: JsonValidationReport | null
+): JsonEditorMarker[] {
+  if (!report) return []
+
+  return report.issues.map((issue) => ({
+    id: `validation-${issue.id}`,
+    kind:
+      issue.severity === "error" ? "validation-error" : "validation-warning",
+    from: issue.offset,
+    to: issue.offset + Math.max(1, issue.length),
+    message: `${issue.line}:${issue.column} ${issue.message}`,
+  }))
+}
+
+function createDiffMarkers(
+  rows: JsonDiffRow[],
+  side: "left" | "right"
+): JsonEditorMarker[] {
+  return rows.flatMap((row) => {
+    const range = side === "left" ? row.leftRange : row.rightRange
+    if (!range) return []
+
+    return [
+      {
+        id: `diff-${row.id}`,
+        kind: getEditorDiffMarkerKind(row.kind),
+        from: range.from,
+        to: range.to,
+        message: `${getDiffTagLabel(row.kind)} at ${row.path}`,
+      },
+    ]
+  })
+}
+
+function getEditorDiffMarkerKind(
+  kind: JsonDiffKind
+): JsonEditorMarker["kind"] {
+  if (kind === "left-only") return "diff-removed"
+  if (kind === "right-only") return "diff-added"
+  if (kind === "type") return "diff-type"
+  if (kind === "null") return "diff-null"
+  if (kind === "array-count") return "diff-array-count"
+  return "diff-changed"
+}
+
+function attachDiffRanges(
+  rows: JsonDiffRow[],
+  leftSourceMap: JsonSourceMap | null,
+  rightSourceMap: JsonSourceMap | null
+): JsonDiffRow[] {
+  return rows.map((row) => ({
+    ...row,
+    leftRange: getDiffRange(row, leftSourceMap, "left"),
+    rightRange: getDiffRange(row, rightSourceMap, "right"),
+  }))
+}
+
+function getDiffRange(
+  row: JsonDiffRow,
+  sourceMap: JsonSourceMap | null,
+  side: "left" | "right"
+) {
+  if (!sourceMap) return undefined
+  if (side === "left" && row.kind === "right-only") return undefined
+  if (side === "right" && row.kind === "left-only") return undefined
+
+  const pathRange = sourceMap.ranges.get(row.path)
+  const rangeMode =
+    row.kind === "left-only" || row.kind === "right-only" ? "property" : "value"
+
+  return getRangeForDiffKind(pathRange, rangeMode)
 }
 
 function transformJsonText(input: string, mode: JsonTransformMode) {

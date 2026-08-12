@@ -9,6 +9,7 @@ import {
   LoaderCircleIcon,
   ShieldAlertIcon,
   WrenchIcon,
+  XIcon,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -21,21 +22,31 @@ import type { JsonValidationResponse } from "@/lib/json-validation.worker"
 
 const ACTION_CLASS = "h-7 rounded-full px-2 text-xs active:!translate-y-0"
 
+type ValidationRepairPanelProps = {
+  sourceJson: string
+  report: JsonValidationReport | null
+  notify: (message: string) => void
+  onClose: () => void
+  onReportChange: (report: JsonValidationReport | null) => void
+}
+
 export function ValidationRepairPanel({
   sourceJson,
+  report,
   notify,
-  onApplyRepair,
-}: {
-  sourceJson: string
-  notify: (message: string) => void
-  onApplyRepair: (repairedJson: string) => void
-}) {
-  const [report, setReport] = useState<JsonValidationReport | null>(null)
+  onClose,
+  onReportChange,
+}: ValidationRepairPanelProps) {
   const [error, setError] = useState("")
   const [isValidating, setIsValidating] = useState(false)
   const workerRef = useRef<Worker | null>(null)
   const requestIdRef = useRef(0)
   const previousSourceRef = useRef(sourceJson)
+  const onReportChangeRef = useRef(onReportChange)
+
+  useEffect(() => {
+    onReportChangeRef.current = onReportChange
+  }, [onReportChange])
 
   useEffect(() => {
     if (previousSourceRef.current === sourceJson) return
@@ -45,8 +56,8 @@ export function ValidationRepairPanel({
     workerRef.current?.terminate()
     workerRef.current = null
     setIsValidating(false)
-    setReport(null)
     setError("")
+    onReportChangeRef.current(null)
   }, [sourceJson])
 
   useEffect(() => () => workerRef.current?.terminate(), [])
@@ -68,7 +79,7 @@ export function ValidationRepairPanel({
     workerRef.current = worker
     setIsValidating(true)
     setError("")
-    setReport(null)
+    onReportChange(null)
 
     worker.onmessage = (event: MessageEvent<JsonValidationResponse>) => {
       const response = event.data
@@ -84,7 +95,7 @@ export function ValidationRepairPanel({
         return
       }
 
-      setReport(response.report)
+      onReportChange(response.report)
       notify(response.report.strictValid ? "Source JSON is valid." : "Validation found JSON issues.")
     }
 
@@ -100,21 +111,86 @@ export function ValidationRepairPanel({
     worker.postMessage({ input: sourceJson, requestId })
   }
 
+  return (
+    <Card size="sm">
+      <CardHeader className="gap-2 sm:grid-cols-[1fr_auto]">
+        <div className="space-y-0.5">
+          <CardTitle className="flex items-center gap-2">
+            <FileCheck2Icon className="size-4" />
+            Validation and Repair
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Strict validation with explicit, reviewable repairs for common JSON-like syntax.
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            size="sm"
+            className={ACTION_CLASS}
+            title="Validate Source JSON with strict JSON rules"
+            disabled={isValidating || !sourceJson.trim()}
+            onClick={validateSource}
+          >
+            {isValidating ? (
+              <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <FileCheck2Icon data-icon="inline-start" />
+            )}
+            {isValidating ? "Validating" : report ? "Validate Again" : "Validate"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close validation tool"
+            title="Close validation tool"
+            onClick={onClose}
+          >
+            <XIcon />
+          </Button>
+        </div>
+      </CardHeader>
+      {error || report ? (
+        <CardContent>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : report ? (
+            <ValidationSummary report={report} />
+          ) : null}
+        </CardContent>
+      ) : null}
+    </Card>
+  )
+}
+
+export function ValidationReportPanel({
+  sourceJson,
+  report,
+  notify,
+  onApplyRepair,
+  onSelectIssue,
+}: {
+  sourceJson: string
+  report: JsonValidationReport
+  notify: (message: string) => void
+  onApplyRepair: (repairedJson: string) => void
+  onSelectIssue: (issue: JsonValidationIssue) => void
+}) {
   function applyRepair() {
-    if (!report?.repairedText || !report.repairCandidateValid) return
+    if (!report.repairedText || !report.repairCandidateValid) return
     onApplyRepair(report.repairedText)
     notify("Confirmed repair applied to Source JSON.")
   }
 
   async function copyReport() {
-    if (!report) return
     await copyText(createReportJson(report, sourceJson))
     notify("Validation report copied.")
   }
 
   function downloadReport() {
-    if (!report) return
-
     const blob = new Blob([createReportJson(report, sourceJson)], {
       type: "application/json",
     })
@@ -132,105 +208,75 @@ export function ValidationRepairPanel({
       <CardHeader className="gap-2 sm:grid-cols-[1fr_auto]">
         <div className="space-y-0.5">
           <CardTitle className="flex items-center gap-2">
-            <FileCheck2Icon className="size-4" />
-            Validation and Repair
+            <ShieldAlertIcon className="size-4" />
+            Validation report
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Strict validation with explicit, reviewable repairs for common JSON-like syntax.
-          </p>
+          <p className="text-xs text-muted-foreground">{report.summary}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {report ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={ACTION_CLASS}
-                title="Copy the reusable validation report"
-                onClick={copyReport}
-              >
-                <ClipboardIcon data-icon="inline-start" />
-                Copy Report
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                title="Download the validation report as JSON"
-                aria-label="Download validation report"
-                onClick={downloadReport}
-              >
-                <DownloadIcon />
-              </Button>
-            </>
-          ) : null}
+        <div className="flex items-center gap-1.5">
           <Button
             type="button"
+            variant="outline"
             size="sm"
             className={ACTION_CLASS}
-            title="Validate Source JSON with strict JSON rules"
-            disabled={isValidating || !sourceJson.trim()}
-            onClick={validateSource}
+            title="Copy the reusable validation report"
+            onClick={copyReport}
           >
-            {isValidating ? (
-              <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
-            ) : (
-              <FileCheck2Icon data-icon="inline-start" />
-            )}
-            {isValidating ? "Validating" : report ? "Validate Again" : "Validate"}
+            <ClipboardIcon data-icon="inline-start" />
+            Copy Report
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            title="Download the validation report as JSON"
+            aria-label="Download validation report"
+            onClick={downloadReport}
+          >
+            <DownloadIcon />
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {error ? (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        ) : null}
-
-        {report ? (
-          <>
-            <ValidationSummary report={report} />
-            {report.issues.length ? <IssueTable issues={report.issues} /> : null}
-            {report.repairedText ? (
-              <section className="space-y-2 border-t pt-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-medium">Repair preview</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Review the proposed text before replacing Source JSON.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className={ACTION_CLASS}
-                    title="Apply this reviewed repair to Source JSON"
-                    disabled={!report.repairCandidateValid}
-                    onClick={applyRepair}
-                  >
-                    <WrenchIcon data-icon="inline-start" />
-                    Apply to Source
-                  </Button>
-                </div>
-                <pre className="max-h-72 overflow-auto rounded-lg border bg-muted p-3 font-mono text-xs leading-5 whitespace-pre-wrap">
-                  {report.repairedText}
-                </pre>
-                {!report.repairCandidateValid ? (
-                  <p className="text-xs text-destructive">
-                    The safe edits do not resolve every parse error. Manual changes are still required before applying.
-                  </p>
-                ) : null}
-              </section>
-            ) : null}
-          </>
+        {report.issues.length ? (
+          <IssueTable issues={report.issues} onSelectIssue={onSelectIssue} />
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Run validation to inspect strict parse errors, duplicate keys, and repairable JSON-like syntax.
+          <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            No validation issues were found.
           </p>
         )}
+        {report.repairedText ? (
+          <section className="space-y-2 border-t pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-medium">Repair preview</h3>
+                <p className="text-xs text-muted-foreground">
+                  Review the proposed text before replacing Source JSON.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className={ACTION_CLASS}
+                title="Apply this reviewed repair to Source JSON"
+                disabled={!report.repairCandidateValid}
+                onClick={applyRepair}
+              >
+                <WrenchIcon data-icon="inline-start" />
+                Apply to Source
+              </Button>
+            </div>
+            <pre className="max-h-72 overflow-auto rounded-lg border bg-muted p-3 font-mono text-xs leading-5 whitespace-pre-wrap">
+              {report.repairedText}
+            </pre>
+            {!report.repairCandidateValid ? (
+              <p className="text-xs text-destructive">
+                The safe edits do not resolve every parse error. Manual changes are still required before applying.
+              </p>
+            ) : null}
+          </section>
+        ) : null}
       </CardContent>
     </Card>
   )
@@ -264,12 +310,17 @@ function ValidationSummary({ report }: { report: JsonValidationReport }) {
       {report.repairCount ? (
         <Badge variant="outline">{report.repairCount.toLocaleString()} proposed edits</Badge>
       ) : null}
-      <span className="text-xs text-muted-foreground">{report.summary}</span>
     </div>
   )
 }
 
-function IssueTable({ issues }: { issues: JsonValidationIssue[] }) {
+function IssueTable({
+  issues,
+  onSelectIssue,
+}: {
+  issues: JsonValidationIssue[]
+  onSelectIssue: (issue: JsonValidationIssue) => void
+}) {
   return (
     <div className="max-h-80 overflow-auto rounded-lg border">
       <Table>
@@ -284,7 +335,12 @@ function IssueTable({ issues }: { issues: JsonValidationIssue[] }) {
         </TableHeader>
         <TableBody>
           {issues.map((issue) => (
-            <TableRow key={issue.id}>
+            <TableRow
+              key={issue.id}
+              className="cursor-pointer"
+              title="Jump to this issue in Source JSON"
+              onClick={() => onSelectIssue(issue)}
+            >
               <TableCell>
                 <Badge variant={issue.severity === "error" ? "destructive" : "outline"}>
                   {issue.severity}

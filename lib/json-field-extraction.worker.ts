@@ -1,11 +1,14 @@
 import {
   extractFieldValueGroups,
+  extractJsonPathValues,
   type ExtractedFieldGroup,
+  type FieldExtractionMode,
 } from "./json-field-extraction"
 import { parseJson } from "./json-lens"
 
 type FieldExtractionRequest = {
-  fieldName: string
+  mode: FieldExtractionMode
+  query: string
   input: string
   requestId: number
 }
@@ -30,7 +33,7 @@ export type FieldExtractionResponse =
     }
 
 self.onmessage = (event: MessageEvent<FieldExtractionRequest>) => {
-  const { fieldName, input, requestId } = event.data
+  const { mode, query, input, requestId } = event.data
 
   try {
     // Worker boundary keeps parsing, traversal, and serialization away from the UI thread.
@@ -40,7 +43,10 @@ self.onmessage = (event: MessageEvent<FieldExtractionRequest>) => {
       return
     }
 
-    const extracted = extractFieldValueGroups(parsed.value, fieldName)
+    const extracted =
+      mode === "path"
+        ? extractJsonPathValues(parsed.value, query)
+        : extractFieldValueGroups(parsed.value, query)
     const groups = extracted.map(({ path, values }) => ({
       path,
       count: values.length,
