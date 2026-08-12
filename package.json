@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test --experimental-strip-types --loader ./tests/ts-extension-loader.mjs tests/*.test.ts",
+    "verify": "npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

@@ -9,6 +9,7 @@ export type JsonValue =
 export type FlatRow = {
   id: number
   original: unknown
+  sourcePath: string
   flat: Record<string, unknown>
 }
 
@@ -231,17 +232,32 @@ export function flattenValue(
 }
 
 export function normalizeRows(value: unknown): FlatRow[] {
-  const source = Array.isArray(value) ? value : [value]
+  if (!Array.isArray(value)) {
+    return [
+      {
+        id: 1,
+        original: value,
+        sourcePath: "$",
+        flat: isRecord(value) ? flattenValue(value) : { value },
+      },
+    ]
+  }
 
-  return normalizeArrayRows(source)
+  return normalizeArrayRows(value, undefined, "$")
 }
 
-function normalizeArrayRows(source: unknown[], limit?: number): FlatRow[] {
+function normalizeArrayRows(
+  source: unknown[],
+  limit?: number,
+  sourcePath = "$"
+): FlatRow[] {
   const rows = typeof limit === "number" ? source.slice(0, limit) : source
+  const pathPrefix = normalizeDisplayPathPrefix(sourcePath)
 
   return rows.map((item, index) => ({
     id: index + 1,
     original: item,
+    sourcePath: `${pathPrefix}[${index}]`,
     flat: isRecord(item) ? flattenValue(item) : { value: item },
   }))
 }
@@ -258,7 +274,7 @@ export function normalizeRowsForSource(
   if (mode === "array-items") {
     const source = Array.isArray(value) ? value : []
     return {
-      rows: normalizeArrayRows(source, limit),
+      rows: normalizeArrayRows(source, limit, "$"),
       rowSource,
       totalRows: source.length,
     }
@@ -273,6 +289,7 @@ export function normalizeRowsForSource(
       rows: limitedEntries.map(([key, item], index) => ({
         id: index + 1,
         original: item,
+        sourcePath: appendDisplayPath("$", key),
         flat: isRecord(item)
           ? { key, ...flattenValue(item) }
           : { key, value: item },
@@ -287,7 +304,7 @@ export function normalizeRowsForSource(
     const source = Array.isArray(nestedValue) ? nestedValue : []
 
     return {
-      rows: normalizeArrayRows(source, limit),
+      rows: normalizeArrayRows(source, limit, config.nestedPath ?? "$"),
       rowSource,
       totalRows: source.length,
     }
@@ -415,6 +432,24 @@ export function getJsonPathValue(value: unknown, path: string) {
     if (isRecord(current)) return current[segment]
     return undefined
   }, value)
+}
+
+function appendDisplayPath(path: string, key: string) {
+  const pathPrefix = normalizeDisplayPathPrefix(path)
+  const segment = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)
+    ? key
+    : `[${JSON.stringify(key)}]`
+
+  if (pathPrefix === "$") {
+    return segment.startsWith("[") ? `${pathPrefix}${segment}` : `${pathPrefix}.${segment}`
+  }
+
+  return segment.startsWith("[") ? `${pathPrefix}${segment}` : `${pathPrefix}.${segment}`
+}
+
+function normalizeDisplayPathPrefix(path: string) {
+  if (!path || path === "$") return "$"
+  return path.startsWith("$") ? path : `$.${path}`
 }
 
 export function getArrayColumnCandidates(rows: FlatRow[], columns: string[]) {
@@ -580,9 +615,9 @@ export function escapeCsv(value: unknown) {
 }
 
 export function rowsToCsv(rows: FlatRow[], columns: string[]) {
-  const header = ["#", ...columns].map(escapeCsv).join(",")
+  const header = ["#", "sourcePath", ...columns].map(escapeCsv).join(",")
   const body = rows.map((row) =>
-    [row.id, ...columns.map((column) => row.flat[column])]
+    [row.id, row.sourcePath, ...columns.map((column) => row.flat[column])]
       .map(escapeCsv)
       .join(",")
   )

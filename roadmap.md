@@ -150,64 +150,64 @@ Start with 3 endpoint groups: roadmap features, roadmap groups, and deployments.
 | `F040 - Filter by predicate` | [Querying and Extraction](#query-extraction) / [Details](#F040) | Implemented | `TBD` |
 | `F041 - Save reusable query` | [Querying and Extraction](#query-extraction) / [Details](#F041) | Implemented | `TBD` |
 | `F042 - Export query results` | [Querying and Extraction](#query-extraction) / [Details](#F042) | Implemented | `TBD` |
-| `F043 - Detect tabular root` | [Table and Tabular Analysis](#table-analysis) / [Details](#F043) | Planned | `TBD` |
-| `F044 - Flatten rows for display` | [Table and Tabular Analysis](#table-analysis) / [Details](#F044) | Planned | `TBD` |
-| `F045 - Preserve source row path` | [Table and Tabular Analysis](#table-analysis) / [Details](#F045) | Planned | `TBD` |
-| `F046 - Generate discovered columns` | [Table and Tabular Analysis](#table-analysis) / [Details](#F046) | Planned | `TBD` |
-| `F047 - Sort table rows` | [Table and Tabular Analysis](#table-analysis) / [Details](#F047) | Planned | `TBD` |
-| `F048 - Filter table columns` | [Table and Tabular Analysis](#table-analysis) / [Details](#F048) | Planned | `TBD` |
-| `F049 - Hide and show columns` | [Table and Tabular Analysis](#table-analysis) / [Details](#F049) | Planned | `TBD` |
-| `F050 - Column frequency summary` | [Table and Tabular Analysis](#table-analysis) / [Details](#F050) | Planned | `TBD` |
-| `F051 - Copy table row` | [Table and Tabular Analysis](#table-analysis) / [Details](#F051) | Planned | `TBD` |
-| `F052 - Export selected table data` | [Table and Tabular Analysis](#table-analysis) / [Details](#F052) | Planned | `TBD` |
-| `F053 - Rename key` | [Transformation](#transformation) / [Details](#F053) | Planned | `TBD` |
-| `F054 - Bulk rename keys` | [Transformation](#transformation) / [Details](#F054) | Planned | `TBD` |
-| `F055 - Transform key case` | [Transformation](#transformation) / [Details](#F055) | Planned | `TBD` |
-| `F056 - Remove keys` | [Transformation](#transformation) / [Details](#F056) | Planned | `TBD` |
-| `F057 - Keep only selected keys` | [Transformation](#transformation) / [Details](#F057) | Planned | `TBD` |
-| `F058 - Move key to path` | [Transformation](#transformation) / [Details](#F058) | Planned | `TBD` |
-| `F059 - Flatten object` | [Transformation](#transformation) / [Details](#F059) | Planned | `TBD` |
-| `F060 - Unflatten object` | [Transformation](#transformation) / [Details](#F060) | Planned | `TBD` |
-| `F061 - Explode array items into rows` | [Transformation](#transformation) / [Details](#F061) | Planned | `TBD` |
-| `F062 - Group rows into nested arrays` | [Transformation](#transformation) / [Details](#F062) | Planned | `TBD` |
-| `F063 - Convert object map to array` | [Transformation](#transformation) / [Details](#F063) | Planned | `TBD` |
-| `F064 - Convert array to object map` | [Transformation](#transformation) / [Details](#F064) | Planned | `TBD` |
-| `F065 - Sort object keys` | [Transformation](#transformation) / [Details](#F065) | Planned | `TBD` |
-| `F066 - Sort arrays by field` | [Transformation](#transformation) / [Details](#F066) | Planned | `TBD` |
-| `F067 - Deduplicate array items` | [Transformation](#transformation) / [Details](#F067) | Planned | `TBD` |
-| `F068 - Trim string values` | [Transformation](#transformation) / [Details](#F068) | Planned | `TBD` |
-| `F069 - Regex replace values` | [Transformation](#transformation) / [Details](#F069) | Planned | `TBD` |
-| `F070 - Convert primitive types` | [Transformation](#transformation) / [Details](#F070) | Planned | `TBD` |
-| `F071 - Normalize null-like values` | [Transformation](#transformation) / [Details](#F071) | Planned | `TBD` |
-| `F072 - Normalize dates` | [Transformation](#transformation) / [Details](#F072) | Planned | `TBD` |
-| `F073 - Add computed field` | [Transformation](#transformation) / [Details](#F073) | Planned | `TBD` |
-| `F074 - Mask sensitive values` | [Transformation](#transformation) / [Details](#F074) | Planned | `TBD` |
-| `F075 - Compare two JSON documents` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F075) | Planned | `TBD` |
-| `F076 - Show added paths` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F076) | Planned | `TBD` |
-| `F077 - Show removed paths` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F077) | Planned | `TBD` |
-| `F078 - Show changed values` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F078) | Planned | `TBD` |
-| `F079 - Ignore key order` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F079) | Planned | `TBD` |
-| `F080 - Compare arrays by identity key` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F080) | Planned | `TBD` |
-| `F081 - Generate JSON Patch` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F081) | Planned | `TBD` |
-| `F082 - Apply JSON Patch` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F082) | Planned | `TBD` |
-| `F083 - Three-way merge` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F083) | Planned | `TBD` |
-| `F084 - Export patch result` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F084) | Planned | `TBD` |
-| `F085 - Infer JSON Schema` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F085) | Planned | `TBD` |
-| `F086 - Generate TypeScript types` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F086) | Planned | `TBD` |
-| `F087 - Generate Zod schema` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F087) | Planned | `TBD` |
-| `F088 - Generate OpenAPI component schema` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F088) | Planned | `TBD` |
-| `F089 - Detect optional fields` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F089) | Planned | `TBD` |
-| `F090 - Detect nullable fields` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F090) | Planned | `TBD` |
-| `F091 - Detect enum candidates` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F091) | Planned | `TBD` |
-| `F092 - Compare schemas` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F092) | Planned | `TBD` |
-| `F093 - Export JSON` | [Conversion and Export](#conversion-export) / [Details](#F093) | Planned | `TBD` |
-| `F094 - Export selected subtree` | [Conversion and Export](#conversion-export) / [Details](#F094) | Planned | `TBD` |
-| `F095 - Export CSV` | [Conversion and Export](#conversion-export) / [Details](#F095) | Planned | `TBD` |
-| `F096 - Export TSV` | [Conversion and Export](#conversion-export) / [Details](#F096) | Planned | `TBD` |
-| `F097 - Export NDJSON` | [Conversion and Export](#conversion-export) / [Details](#F097) | Planned | `TBD` |
-| `F098 - Export Markdown table` | [Conversion and Export](#conversion-export) / [Details](#F098) | Planned | `TBD` |
-| `F099 - Export generated contract` | [Conversion and Export](#conversion-export) / [Details](#F099) | Planned | `TBD` |
-| `F100 - Copy output to clipboard` | [Conversion and Export](#conversion-export) / [Details](#F100) | Planned | `TBD` |
+| `F043 - Detect tabular root` | [Table and Tabular Analysis](#table-analysis) / [Details](#F043) | Implemented | `TBD` |
+| `F044 - Flatten rows for display` | [Table and Tabular Analysis](#table-analysis) / [Details](#F044) | Implemented | `TBD` |
+| `F045 - Preserve source row path` | [Table and Tabular Analysis](#table-analysis) / [Details](#F045) | Implemented | `TBD` |
+| `F046 - Generate discovered columns` | [Table and Tabular Analysis](#table-analysis) / [Details](#F046) | Implemented | `TBD` |
+| `F047 - Sort table rows` | [Table and Tabular Analysis](#table-analysis) / [Details](#F047) | Implemented | `TBD` |
+| `F048 - Filter table columns` | [Table and Tabular Analysis](#table-analysis) / [Details](#F048) | Implemented | `TBD` |
+| `F049 - Hide and show columns` | [Table and Tabular Analysis](#table-analysis) / [Details](#F049) | Implemented | `TBD` |
+| `F050 - Column frequency summary` | [Table and Tabular Analysis](#table-analysis) / [Details](#F050) | Implemented | `TBD` |
+| `F051 - Copy table row` | [Table and Tabular Analysis](#table-analysis) / [Details](#F051) | Implemented | `TBD` |
+| `F052 - Export selected table data` | [Table and Tabular Analysis](#table-analysis) / [Details](#F052) | Implemented | `TBD` |
+| `F053 - Rename key` | [Transformation](#transformation) / [Details](#F053) | Implemented | `TBD` |
+| `F054 - Bulk rename keys` | [Transformation](#transformation) / [Details](#F054) | Implemented | `TBD` |
+| `F055 - Transform key case` | [Transformation](#transformation) / [Details](#F055) | Implemented | `TBD` |
+| `F056 - Remove keys` | [Transformation](#transformation) / [Details](#F056) | Implemented | `TBD` |
+| `F057 - Keep only selected keys` | [Transformation](#transformation) / [Details](#F057) | Implemented | `TBD` |
+| `F058 - Move key to path` | [Transformation](#transformation) / [Details](#F058) | Implemented | `TBD` |
+| `F059 - Flatten object` | [Transformation](#transformation) / [Details](#F059) | Implemented | `TBD` |
+| `F060 - Unflatten object` | [Transformation](#transformation) / [Details](#F060) | Implemented | `TBD` |
+| `F061 - Explode array items into rows` | [Transformation](#transformation) / [Details](#F061) | Implemented | `TBD` |
+| `F062 - Group rows into nested arrays` | [Transformation](#transformation) / [Details](#F062) | Implemented | `TBD` |
+| `F063 - Convert object map to array` | [Transformation](#transformation) / [Details](#F063) | Implemented | `TBD` |
+| `F064 - Convert array to object map` | [Transformation](#transformation) / [Details](#F064) | Implemented | `TBD` |
+| `F065 - Sort object keys` | [Transformation](#transformation) / [Details](#F065) | Implemented | `TBD` |
+| `F066 - Sort arrays by field` | [Transformation](#transformation) / [Details](#F066) | Implemented | `TBD` |
+| `F067 - Deduplicate array items` | [Transformation](#transformation) / [Details](#F067) | Implemented | `TBD` |
+| `F068 - Trim string values` | [Transformation](#transformation) / [Details](#F068) | Implemented | `TBD` |
+| `F069 - Regex replace values` | [Transformation](#transformation) / [Details](#F069) | Implemented | `TBD` |
+| `F070 - Convert primitive types` | [Transformation](#transformation) / [Details](#F070) | Implemented | `TBD` |
+| `F071 - Normalize null-like values` | [Transformation](#transformation) / [Details](#F071) | Implemented | `TBD` |
+| `F072 - Normalize dates` | [Transformation](#transformation) / [Details](#F072) | Implemented | `TBD` |
+| `F073 - Add computed field` | [Transformation](#transformation) / [Details](#F073) | Implemented | `TBD` |
+| `F074 - Mask sensitive values` | [Transformation](#transformation) / [Details](#F074) | Implemented | `TBD` |
+| `F075 - Compare two JSON documents` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F075) | Implemented | `TBD` |
+| `F076 - Show added paths` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F076) | Implemented | `TBD` |
+| `F077 - Show removed paths` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F077) | Implemented | `TBD` |
+| `F078 - Show changed values` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F078) | Implemented | `TBD` |
+| `F079 - Ignore key order` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F079) | Implemented | `TBD` |
+| `F080 - Compare arrays by identity key` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F080) | Implemented | `TBD` |
+| `F081 - Generate JSON Patch` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F081) | Implemented | `TBD` |
+| `F082 - Apply JSON Patch` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F082) | Implemented | `TBD` |
+| `F083 - Three-way merge` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F083) | Implemented | `TBD` |
+| `F084 - Export patch result` | [Diff, Compare, Patch, and Merge](#diff-patch-merge) / [Details](#F084) | Implemented | `TBD` |
+| `F085 - Infer JSON Schema` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F085) | Implemented | `TBD` |
+| `F086 - Generate TypeScript types` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F086) | Implemented | `TBD` |
+| `F087 - Generate Zod schema` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F087) | Implemented | `TBD` |
+| `F088 - Generate OpenAPI component schema` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F088) | Implemented | `TBD` |
+| `F089 - Detect optional fields` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F089) | Implemented | `TBD` |
+| `F090 - Detect nullable fields` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F090) | Implemented | `TBD` |
+| `F091 - Detect enum candidates` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F091) | Implemented | `TBD` |
+| `F092 - Compare schemas` | [Schema, Types, and Contracts](#schema-contracts) / [Details](#F092) | Implemented | `TBD` |
+| `F093 - Export JSON` | [Conversion and Export](#conversion-export) / [Details](#F093) | Implemented | `TBD` |
+| `F094 - Export selected subtree` | [Conversion and Export](#conversion-export) / [Details](#F094) | Implemented | `TBD` |
+| `F095 - Export CSV` | [Conversion and Export](#conversion-export) / [Details](#F095) | Implemented | `TBD` |
+| `F096 - Export TSV` | [Conversion and Export](#conversion-export) / [Details](#F096) | Implemented | `TBD` |
+| `F097 - Export NDJSON` | [Conversion and Export](#conversion-export) / [Details](#F097) | Implemented | `TBD` |
+| `F098 - Export Markdown table` | [Conversion and Export](#conversion-export) / [Details](#F098) | Implemented | `TBD` |
+| `F099 - Export generated contract` | [Conversion and Export](#conversion-export) / [Details](#F099) | Implemented | `TBD` |
+| `F100 - Copy output to clipboard` | [Conversion and Export](#conversion-export) / [Details](#F100) | Implemented | `TBD` |
 | `F101 - Document structure summary` | [Insights, Quality, and Profiling](#insights-quality) / [Details](#F101) | Planned | `TBD` |
 | `F102 - Missing-field report` | [Insights, Quality, and Profiling](#insights-quality) / [Details](#F102) | Planned | `TBD` |
 | `F103 - Type distribution by path` | [Insights, Quality, and Profiling](#insights-quality) / [Details](#F103) | Planned | `TBD` |
@@ -230,28 +230,28 @@ Start with 3 endpoint groups: roadmap features, roadmap groups, and deployments.
 | `F120 - Export pipeline config` | [Automation and Pipelines](#automation-pipelines) / [Details](#F120) | Planned | `TBD` |
 | `F121 - Batch process files` | [Automation and Pipelines](#automation-pipelines) / [Details](#F121) | Planned | `TBD` |
 | `F122 - Stop long-running pipeline` | [Automation and Pipelines](#automation-pipelines) / [Details](#F122) | Planned | `TBD` |
-| `F123 - Format API response` | [Developer and API Utilities](#developer-utilities) / [Details](#F123) | Planned | `TBD` |
-| `F124 - Compare request and response payloads` | [Developer and API Utilities](#developer-utilities) / [Details](#F124) | Planned | `TBD` |
-| `F125 - Generate mock payload` | [Developer and API Utilities](#developer-utilities) / [Details](#F125) | Planned | `TBD` |
-| `F126 - Generate fetch snippet` | [Developer and API Utilities](#developer-utilities) / [Details](#F126) | Planned | `TBD` |
-| `F127 - Generate fixture file` | [Developer and API Utilities](#developer-utilities) / [Details](#F127) | Planned | `TBD` |
-| `F128 - Generate path assertions` | [Developer and API Utilities](#developer-utilities) / [Details](#F128) | Planned | `TBD` |
-| `F129 - Inspect webhook payload` | [Developer and API Utilities](#developer-utilities) / [Details](#F129) | Planned | `TBD` |
-| `F130 - Generate path list` | [Developer and API Utilities](#developer-utilities) / [Details](#F130) | Planned | `TBD` |
-| `F131 - Worker-backed parsing` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F131) | Planned | `TBD` |
-| `F132 - Worker-backed flattening` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F132) | Planned | `TBD` |
-| `F133 - Worker-backed extraction` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F133) | Planned | `TBD` |
-| `F134 - Worker-backed export` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F134) | Planned | `TBD` |
-| `F135 - Virtualized tree nodes` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F135) | Planned | `TBD` |
-| `F136 - Virtualized table rows` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F136) | Planned | `TBD` |
-| `F137 - Cancelable long operations` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F137) | Planned | `TBD` |
-| `F138 - Large-data stress fixtures` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F138) | Planned | `TBD` |
-| `F139 - Engine unit tests` | [Testing and Verification](#testing-verification) / [Details](#F139) | Planned | `TBD` |
-| `F140 - Exact extraction fixtures` | [Testing and Verification](#testing-verification) / [Details](#F140) | Planned | `TBD` |
-| `F141 - Transformation round-trip tests` | [Testing and Verification](#testing-verification) / [Details](#F141) | Planned | `TBD` |
-| `F142 - Export escaping tests` | [Testing and Verification](#testing-verification) / [Details](#F142) | Planned | `TBD` |
-| `F143 - Browser workflow checks` | [Testing and Verification](#testing-verification) / [Details](#F143) | Planned | `TBD` |
-| `F144 - Build and lint gates` | [Testing and Verification](#testing-verification) / [Details](#F144) | Planned | `TBD` |
+| `F123 - Format API response` | [Developer and API Utilities](#developer-utilities) / [Details](#F123) | Implemented | `TBD` |
+| `F124 - Compare request and response payloads` | [Developer and API Utilities](#developer-utilities) / [Details](#F124) | Implemented | `TBD` |
+| `F125 - Generate mock payload` | [Developer and API Utilities](#developer-utilities) / [Details](#F125) | Implemented | `TBD` |
+| `F126 - Generate fetch snippet` | [Developer and API Utilities](#developer-utilities) / [Details](#F126) | Implemented | `TBD` |
+| `F127 - Generate fixture file` | [Developer and API Utilities](#developer-utilities) / [Details](#F127) | Implemented | `TBD` |
+| `F128 - Generate path assertions` | [Developer and API Utilities](#developer-utilities) / [Details](#F128) | Implemented | `TBD` |
+| `F129 - Inspect webhook payload` | [Developer and API Utilities](#developer-utilities) / [Details](#F129) | Implemented | `TBD` |
+| `F130 - Generate path list` | [Developer and API Utilities](#developer-utilities) / [Details](#F130) | Implemented | `TBD` |
+| `F131 - Worker-backed parsing` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F131) | Implemented | `TBD` |
+| `F132 - Worker-backed flattening` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F132) | Implemented | `TBD` |
+| `F133 - Worker-backed extraction` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F133) | Implemented | `TBD` |
+| `F134 - Worker-backed export` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F134) | Implemented | `TBD` |
+| `F135 - Virtualized tree nodes` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F135) | Implemented | `TBD` |
+| `F136 - Virtualized table rows` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F136) | Implemented | `TBD` |
+| `F137 - Cancelable long operations` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F137) | Implemented | `TBD` |
+| `F138 - Large-data stress fixtures` | [Performance and Large-Data Handling](#performance-large-data) / [Details](#F138) | Implemented | `TBD` |
+| `F139 - Engine unit tests` | [Testing and Verification](#testing-verification) / [Details](#F139) | Implemented | `TBD` |
+| `F140 - Exact extraction fixtures` | [Testing and Verification](#testing-verification) / [Details](#F140) | Implemented | `TBD` |
+| `F141 - Transformation round-trip tests` | [Testing and Verification](#testing-verification) / [Details](#F141) | Implemented | `TBD` |
+| `F142 - Export escaping tests` | [Testing and Verification](#testing-verification) / [Details](#F142) | Implemented | `TBD` |
+| `F143 - Browser workflow checks` | [Testing and Verification](#testing-verification) / [Details](#F143) | Implemented | `TBD` |
+| `F144 - Build and lint gates` | [Testing and Verification](#testing-verification) / [Details](#F144) | Implemented | `TBD` |
 
 ## Roadmap Sections
 
@@ -597,7 +597,7 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Keep each displayed row linked to its original JSON path for inspection and export.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F046"></a>
 #### F046 - Generate discovered columns
@@ -632,21 +632,21 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Show distinct values, missing counts, null counts, and dominant values per column.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F051"></a>
 #### F051 - Copy table row
 
 Description: Copy a selected row as JSON while preserving nested source data where possible.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F052"></a>
 #### F052 - Export selected table data
 
 Description: Export selected rows and columns to CSV, JSON, or other supported formats.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="transformation"></a>
@@ -659,14 +659,14 @@ Change JSON shape, keys, and values through preview-first operations.
 
 Description: Rename a specific key at a selected path with preview and affected-path reporting.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F054"></a>
 #### F054 - Bulk rename keys
 
 Description: Apply multiple key renames from a mapping while detecting collisions before mutation.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F055"></a>
 #### F055 - Transform key case
@@ -680,21 +680,21 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Delete selected keys or paths with a diff preview and undoable operation history.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F057"></a>
 #### F057 - Keep only selected keys
 
 Description: Produce a reduced document that preserves only explicitly selected keys or paths.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F058"></a>
 #### F058 - Move key to path
 
 Description: Move a value from one path to another while handling target collisions explicitly.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F059"></a>
 #### F059 - Flatten object
@@ -722,21 +722,21 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Nest flat records into arrays by selected grouping keys.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F063"></a>
 #### F063 - Convert object map to array
 
 Description: Turn an object keyed by id or name into an array of records with the key retained.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F064"></a>
 #### F064 - Convert array to object map
 
 Description: Turn an array into an object map using a selected identity field.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F065"></a>
 #### F065 - Sort object keys
@@ -750,63 +750,63 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Order array items by a selected field using stable and type-aware sorting.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F067"></a>
 #### F067 - Deduplicate array items
 
 Description: Remove duplicate primitives or objects according to selected equality rules.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F068"></a>
 #### F068 - Trim string values
 
 Description: Remove leading and trailing whitespace from string values at selected paths.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F069"></a>
 #### F069 - Regex replace values
 
 Description: Apply regex replacement to string values with preview and match counts.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F070"></a>
 #### F070 - Convert primitive types
 
 Description: Convert numeric strings, booleans, numbers, and strings intentionally with failure reporting.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F071"></a>
 #### F071 - Normalize null-like values
 
 Description: Convert empty strings, NA, N/A, undefined-like strings, or custom tokens to null.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F072"></a>
 #### F072 - Normalize dates
 
 Description: Convert date-like strings into a selected output format with invalid-date warnings.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F073"></a>
 #### F073 - Add computed field
 
 Description: Create a new field from existing values using a controlled expression or template model.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F074"></a>
 #### F074 - Mask sensitive values
 
 Description: Replace sensitive values with masked forms while preserving enough shape for debugging.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="diff-patch-merge"></a>
@@ -854,35 +854,35 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Compare array items by a selected id field instead of only by index.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F081"></a>
 #### F081 - Generate JSON Patch
 
 Description: Produce RFC-style patch operations from detected changes.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F082"></a>
 #### F082 - Apply JSON Patch
 
 Description: Apply patch operations to a document with preview, errors, and changed paths.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F083"></a>
 #### F083 - Three-way merge
 
 Description: Merge base, local, and remote JSON versions while surfacing conflicts.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F084"></a>
 #### F084 - Export patch result
 
 Description: Download or copy patch operations and the resulting document.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="schema-contracts"></a>
@@ -895,7 +895,7 @@ Convert observed JSON into reusable contracts for code, APIs, and validation.
 
 Description: Generate a schema from observed payloads with optional, nullable, and mixed-type detection.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F086"></a>
 #### F086 - Generate TypeScript types
@@ -909,42 +909,42 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Create runtime validation schemas from inferred or supplied JSON structure.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F088"></a>
 #### F088 - Generate OpenAPI component schema
 
 Description: Convert inferred schema into an OpenAPI-compatible component definition.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F089"></a>
 #### F089 - Detect optional fields
 
 Description: Identify fields that do not appear in every record or object sample.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F090"></a>
 #### F090 - Detect nullable fields
 
 Description: Identify fields that explicitly contain null and reflect that in generated contracts.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F091"></a>
 #### F091 - Detect enum candidates
 
 Description: Suggest enums from low-cardinality string or number values with example counts.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F092"></a>
 #### F092 - Compare schemas
 
 Description: Show differences between two schema versions for contract review.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="conversion-export"></a>
@@ -964,7 +964,7 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Download only the selected node or query result as JSON.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F095"></a>
 #### F095 - Export CSV
@@ -978,21 +978,21 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Convert tabular data to tab-separated values for spreadsheet-friendly workflows.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F097"></a>
 #### F097 - Export NDJSON
 
 Description: Export arrays or row sets as newline-delimited JSON records.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F098"></a>
 #### F098 - Export Markdown table
 
 Description: Convert selected table data into a Markdown table for docs and issue comments.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F099"></a>
 #### F099 - Export generated contract
@@ -1191,56 +1191,56 @@ Support API debugging, fixture creation, and integration workflows.
 
 Description: Paste or import API responses and format them for debugging and inspection.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F124"></a>
 #### F124 - Compare request and response payloads
 
 Description: Inspect how request and response JSON differ for API debugging.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F125"></a>
 #### F125 - Generate mock payload
 
 Description: Create sample JSON from a schema or observed shape for local testing.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F126"></a>
 #### F126 - Generate fetch snippet
 
 Description: Create a readable TypeScript fetch example using the current JSON as body or response shape.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F127"></a>
 #### F127 - Generate fixture file
 
 Description: Export payloads as named test fixtures with stable formatting.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F128"></a>
 #### F128 - Generate path assertions
 
 Description: Create test assertion suggestions from selected JSON paths and values.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F129"></a>
 #### F129 - Inspect webhook payload
 
 Description: Analyze webhook-style payloads for event type, object id, timestamps, and nested changes.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F130"></a>
 #### F130 - Generate path list
 
 Description: List every discovered path with examples, value types, and occurrence counts.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="performance-large-data"></a>
@@ -1274,14 +1274,14 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Serialize large CSV, NDJSON, or schema outputs without blocking the UI.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F135"></a>
 #### F135 - Virtualized tree nodes
 
 Description: Render only visible JSON tree nodes for large nested documents.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F136"></a>
 #### F136 - Virtualized table rows
@@ -1295,14 +1295,14 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Let users cancel parse, query, transform, export, and pipeline jobs safely.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F138"></a>
 #### F138 - Large-data stress fixtures
 
 Description: Generate repeatable large JSON fixtures for performance testing and regression checks.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="testing-verification"></a>
@@ -1315,35 +1315,35 @@ Make JSON operations trustworthy through focused engine tests and UI verificatio
 
 Description: Test parse, path, query, transform, diff, schema, and export functions outside React.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F140"></a>
 #### F140 - Exact extraction fixtures
 
 Description: Cover arrays, duplicates, unusual keys, nulls, and case-sensitive field matching.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F141"></a>
 #### F141 - Transformation round-trip tests
 
 Description: Verify flatten-unflatten, type conversion, sort stability, and redaction behavior.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F142"></a>
 #### F142 - Export escaping tests
 
 Description: Verify CSV, TSV, NDJSON, Markdown, and JSON exports handle escaping and nulls correctly.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F143"></a>
 #### F143 - Browser workflow checks
 
 Description: Verify real UI workflows change data correctly, not only that controls render.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F144"></a>
 #### F144 - Build and lint gates

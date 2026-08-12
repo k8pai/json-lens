@@ -18,6 +18,7 @@ import {
   ArrowUpIcon,
   ClipboardIcon,
   Columns3Icon,
+  DownloadIcon,
   EyeIcon,
   EyeOffIcon,
   FilterIcon,
@@ -52,11 +53,13 @@ import {
   compareValues,
   copyText,
   displayValue,
+  downloadText,
   flattenValue,
   getColumnValueOptions,
   getColumns,
   isRecord,
   rowsToCsv,
+  stringifyPretty,
   type FlatRow,
   type RowSourceMode,
   type SortState,
@@ -122,6 +125,8 @@ export function TableWorkspace() {
   const [subTableColumn, setSubTableColumn] = useState("")
   const [subTableParentColumn, setSubTableParentColumn] = useState("")
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
+  const [selectedRowId, setSelectedRowId] = useState<number | null>(null)
+  const selectedRow = lens.filteredRows.find((row) => row.id === selectedRowId) ?? null
   const effectiveSubTableColumn =
     subTableColumn && lens.arrayColumnCandidates.some((candidate) => candidate.column === subTableColumn)
       ? subTableColumn
@@ -159,6 +164,33 @@ export function TableWorkspace() {
   async function copyVisibleTable() {
     await copyText(rowsToCsv(lens.filteredRows, lens.visibleColumns))
     lens.notify("Visible table copied as CSV.")
+  }
+
+  async function copySelectedRow() {
+    if (!selectedRow) return
+
+    await copyText(stringifyPretty(selectedRow.original, lens.indentationWidth))
+    lens.notify(`Row ${selectedRow.id.toLocaleString()} copied as JSON.`)
+  }
+
+  function exportVisibleTable() {
+    downloadText(
+      "json-lens-visible-table.csv",
+      rowsToCsv(lens.filteredRows, lens.visibleColumns),
+      "text/csv"
+    )
+    lens.notify("Visible table exported as CSV.")
+  }
+
+  function exportSelectedRow() {
+    if (!selectedRow) return
+
+    downloadText(
+      `json-lens-row-${selectedRow.id}.json`,
+      stringifyPretty(selectedRow.original, lens.indentationWidth),
+      "application/json"
+    )
+    lens.notify(`Row ${selectedRow.id.toLocaleString()} exported as JSON.`)
   }
 
   function syncScroll(source: HTMLDivElement, ...targets: Array<HTMLDivElement | null>) {
@@ -219,9 +251,44 @@ export function TableWorkspace() {
             <Badge variant="secondary">
               {lens.filteredRows.length.toLocaleString()} of {lens.rows.length.toLocaleString()} rows
             </Badge>
+            {selectedRow ? (
+              <Badge
+                variant="outline"
+                className="max-w-72 truncate font-mono"
+                title={selectedRow.sourcePath}
+              >
+                {selectedRow.sourcePath}
+              </Badge>
+            ) : null}
+            <Button
+              variant="outline"
+              title="Export the visible table as CSV"
+              onClick={exportVisibleTable}
+            >
+              <DownloadIcon data-icon="inline-start" />
+              Export CSV
+            </Button>
             <Button variant="outline" title="Copy the visible table as CSV" onClick={copyVisibleTable}>
               <ClipboardIcon data-icon="inline-start" />
               Copy CSV
+            </Button>
+            <Button
+              variant="outline"
+              title="Copy the selected source row as JSON"
+              disabled={!selectedRow}
+              onClick={copySelectedRow}
+            >
+              <ClipboardIcon data-icon="inline-start" />
+              Copy Row
+            </Button>
+            <Button
+              variant="outline"
+              title="Export the selected source row as JSON"
+              disabled={!selectedRow}
+              onClick={exportSelectedRow}
+            >
+              <DownloadIcon data-icon="inline-start" />
+              Export Row
             </Button>
           </div>
         </CardContent>
@@ -243,6 +310,8 @@ export function TableWorkspace() {
           </CardContent>
         ) : null}
       </Card>
+
+      <ColumnSummaryPanel />
 
       <Card>
         <CardContent className="p-0">
@@ -353,7 +422,16 @@ export function TableWorkspace() {
                       </TableRow>
                     ) : null}
                     {lens.pagedRows.slice(parentVirtualRows.start, parentVirtualRows.end).map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow
+                      key={row.id}
+                      className={
+                        selectedRowId === row.id
+                          ? "bg-primary/10"
+                          : "cursor-pointer hover:bg-muted/50"
+                      }
+                      title={`Select source row ${row.sourcePath}`}
+                      onClick={() => setSelectedRowId(row.id)}
+                    >
                       {lens.visibleColumns.map((column) => (
                         <TableCell
                           key={column}
@@ -645,6 +723,102 @@ function getSortActionLabel(column: string, sortState: SortState) {
   if (sortState?.column !== column) return `Sort ${column} ascending`
   if (sortState.direction === "asc") return `Sort ${column} descending`
   return `Clear sorting for ${column}`
+}
+
+function ColumnSummaryPanel() {
+  const lens = useJsonLens()
+  const statsByColumn = useMemo(
+    () => new Map(lens.stats.map((stat) => [stat.column, stat])),
+    [lens.stats]
+  )
+  const visibleStats = lens.visibleColumns
+    .map((column) => statsByColumn.get(column))
+    .filter((stat): stat is NonNullable<typeof stat> => Boolean(stat))
+    .slice(0, 8)
+
+  if (!lens.visibleColumns.length) return null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Columns3Icon className="size-4" />
+          Column summaries
+        </CardTitle>
+        <CardDescription>
+          Frequency, emptiness, and type signals for the current row source.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {lens.deferredStats ? (
+          <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            Column summaries are deferred for this large dataset. Process the full dataset to compute complete table statistics.
+          </p>
+        ) : visibleStats.length ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {visibleStats.map((stat) => {
+              const emptyPercentage =
+                lens.rows.length === 0
+                  ? 0
+                  : Math.round((stat.emptyCount / lens.rows.length) * 100)
+
+              return (
+                <div key={stat.column} className="rounded-md border p-3">
+                  <div className="mb-3 min-w-0">
+                    <div className="truncate font-medium" title={stat.column}>
+                      {stat.column}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1 text-xs text-muted-foreground">
+                      <Badge variant="secondary">{stat.type}</Badge>
+                      <Badge variant="outline">
+                        {stat.uniqueCount.toLocaleString()} unique
+                      </Badge>
+                      <Badge variant="outline">
+                        {stat.emptyCount.toLocaleString()} empty ({emptyPercentage}%)
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {stat.values.slice(0, 4).map((value) => (
+                      <div key={value.value} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="min-w-0 truncate" title={value.value}>
+                            {value.value}
+                          </span>
+                          <span className="shrink-0 text-muted-foreground">
+                            {value.count.toLocaleString()} ({value.percentage}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary"
+                            style={{ width: `${value.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {stat.warnings.length ? (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {stat.warnings.map((warning) => (
+                        <Badge key={warning} variant="destructive">
+                          {warning}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            No column summaries are available for the current table.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 function ColumnSizing({
@@ -1545,6 +1719,7 @@ function buildSubTableRows(
       childRows.push({
         id: childRows.length + 1,
         original: item,
+        sourcePath: `${parentRow.sourcePath}.${arrayColumn}[${itemIndex}]`,
         flat: {
           [parentKey]: parentId,
           parentRow: parentRow.id,

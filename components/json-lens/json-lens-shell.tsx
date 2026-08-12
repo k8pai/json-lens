@@ -5,9 +5,13 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3Icon,
   BracesIcon,
+  Code2Icon,
   DownloadIcon,
   FileCode2Icon,
   FileJsonIcon,
+  FlaskConicalIcon,
+  GaugeIcon,
+  GitCompareArrowsIcon,
   Rows3Icon,
   SparklesIcon,
   UploadIcon,
@@ -44,6 +48,24 @@ const NAV_ITEMS: NavItem[] = [
     icon: FileJsonIcon,
   },
   {
+    href: "/transform",
+    label: "Transform",
+    description: "Preview shape, key, and value transformations.",
+    icon: Wand2Icon,
+  },
+  {
+    href: "/diff",
+    label: "Diff",
+    description: "Compare, patch, and merge JSON documents.",
+    icon: GitCompareArrowsIcon,
+  },
+  {
+    href: "/schema",
+    label: "Schema",
+    description: "Generate JSON Schema, Zod, and contracts.",
+    icon: FileCode2Icon,
+  },
+  {
     href: "/insights",
     label: "Insights",
     description: "Review frequencies, missing values, and warnings.",
@@ -54,6 +76,24 @@ const NAV_ITEMS: NavItem[] = [
     label: "TypeScript",
     description: "Generate interfaces from the current data.",
     icon: FileCode2Icon,
+  },
+  {
+    href: "/developer",
+    label: "Developer",
+    description: "Generate API snippets, fixtures, and assertions.",
+    icon: Code2Icon,
+  },
+  {
+    href: "/performance",
+    label: "Performance",
+    description: "Inspect worker strategy and stress fixtures.",
+    icon: GaugeIcon,
+  },
+  {
+    href: "/verification",
+    label: "Verify",
+    description: "Review test, build, and workflow gates.",
+    icon: FlaskConicalIcon,
   },
   {
     href: "/export",
@@ -212,7 +252,7 @@ export function JsonLensShell({ children }: { children: ReactNode }) {
 function WorkspaceNav({ pathname }: { pathname: string }) {
   return (
     <Card className="mb-5 border-b py-4">
-      <CardContent className="grid gap-2 md:grid-cols-5">
+      <CardContent className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
           const active = pathname === item.href
