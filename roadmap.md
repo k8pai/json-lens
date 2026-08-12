@@ -128,28 +128,28 @@ Start with 3 endpoint groups: roadmap features, roadmap groups, and deployments.
 | `F018 - Apply repair preview` | [Validation and Repair](#validation-repair) / [Details](#F018) | Planned | `TBD` |
 | `F019 - Validate against JSON Schema` | [Validation and Repair](#validation-repair) / [Details](#F019) | Planned | `TBD` |
 | `F020 - Produce validation report` | [Validation and Repair](#validation-repair) / [Details](#F020) | Planned | `TBD` |
-| `F021 - Beautify JSON` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F021) | Planned | `TBD` |
-| `F022 - Minify JSON` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F022) | Planned | `TBD` |
-| `F023 - Toggle indentation width` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F023) | Planned | `TBD` |
-| `F024 - Collapse and expand nodes` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F024) | Planned | `TBD` |
-| `F025 - Expand to depth` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F025) | Planned | `TBD` |
-| `F026 - Search keys` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F026) | Planned | `TBD` |
-| `F027 - Search values` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F027) | Planned | `TBD` |
-| `F028 - Jump to path` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F028) | Planned | `TBD` |
-| `F029 - Copy path` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F029) | Planned | `TBD` |
-| `F030 - Copy subtree` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F030) | Planned | `TBD` |
-| `F031 - Breadcrumb navigation` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F031) | Planned | `TBD` |
-| `F032 - Large-file preview mode` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F032) | Planned | `TBD` |
-| `F033 - Exact field-name extraction` | [Querying and Extraction](#query-extraction) / [Details](#F033) | Planned | `TBD` |
-| `F034 - Dot-path query` | [Querying and Extraction](#query-extraction) / [Details](#F034) | Planned | `TBD` |
-| `F035 - Bracket-path query` | [Querying and Extraction](#query-extraction) / [Details](#F035) | Planned | `TBD` |
-| `F036 - JSONPath query` | [Querying and Extraction](#query-extraction) / [Details](#F036) | Planned | `TBD` |
-| `F037 - Extract all matching values` | [Querying and Extraction](#query-extraction) / [Details](#F037) | Planned | `TBD` |
-| `F038 - Extract first matching value` | [Querying and Extraction](#query-extraction) / [Details](#F038) | Planned | `TBD` |
-| `F039 - Extract objects containing key` | [Querying and Extraction](#query-extraction) / [Details](#F039) | Planned | `TBD` |
-| `F040 - Filter by predicate` | [Querying and Extraction](#query-extraction) / [Details](#F040) | Planned | `TBD` |
-| `F041 - Save reusable query` | [Querying and Extraction](#query-extraction) / [Details](#F041) | Planned | `TBD` |
-| `F042 - Export query results` | [Querying and Extraction](#query-extraction) / [Details](#F042) | Planned | `TBD` |
+| `F021 - Beautify JSON` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F021) | Implemented | `TBD` |
+| `F022 - Minify JSON` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F022) | Implemented | `TBD` |
+| `F023 - Toggle indentation width` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F023) | Implemented | `TBD` |
+| `F024 - Collapse and expand nodes` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F024) | Implemented | `TBD` |
+| `F025 - Expand to depth` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F025) | Implemented | `TBD` |
+| `F026 - Search keys` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F026) | Implemented | `TBD` |
+| `F027 - Search values` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F027) | Implemented | `TBD` |
+| `F028 - Jump to path` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F028) | Implemented | `TBD` |
+| `F029 - Copy path` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F029) | Implemented | `TBD` |
+| `F030 - Copy subtree` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F030) | Implemented | `TBD` |
+| `F031 - Breadcrumb navigation` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F031) | Implemented | `TBD` |
+| `F032 - Large-file preview mode` | [Viewing, Formatting, and Navigation](#viewing-navigation) / [Details](#F032) | Implemented | `TBD` |
+| `F033 - Exact field-name extraction` | [Querying and Extraction](#query-extraction) / [Details](#F033) | Implemented | `TBD` |
+| `F034 - Dot-path query` | [Querying and Extraction](#query-extraction) / [Details](#F034) | Implemented | `TBD` |
+| `F035 - Bracket-path query` | [Querying and Extraction](#query-extraction) / [Details](#F035) | Implemented | `TBD` |
+| `F036 - JSONPath query` | [Querying and Extraction](#query-extraction) / [Details](#F036) | Implemented | `TBD` |
+| `F037 - Extract all matching values` | [Querying and Extraction](#query-extraction) / [Details](#F037) | Implemented | `TBD` |
+| `F038 - Extract first matching value` | [Querying and Extraction](#query-extraction) / [Details](#F038) | Implemented | `TBD` |
+| `F039 - Extract objects containing key` | [Querying and Extraction](#query-extraction) / [Details](#F039) | Implemented | `TBD` |
+| `F040 - Filter by predicate` | [Querying and Extraction](#query-extraction) / [Details](#F040) | Implemented | `TBD` |
+| `F041 - Save reusable query` | [Querying and Extraction](#query-extraction) / [Details](#F041) | Implemented | `TBD` |
+| `F042 - Export query results` | [Querying and Extraction](#query-extraction) / [Details](#F042) | Implemented | `TBD` |
 | `F043 - Detect tabular root` | [Table and Tabular Analysis](#table-analysis) / [Details](#F043) | Planned | `TBD` |
 | `F044 - Flatten rows for display` | [Table and Tabular Analysis](#table-analysis) / [Details](#F044) | Planned | `TBD` |
 | `F045 - Preserve source row path` | [Table and Tabular Analysis](#table-analysis) / [Details](#F045) | Planned | `TBD` |
@@ -431,63 +431,63 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Let users choose formatting width for readability or team conventions.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F024"></a>
 #### F024 - Collapse and expand nodes
 
 Description: Allow nested objects and arrays to be folded so users can scan structure faster.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F025"></a>
 #### F025 - Expand to depth
 
 Description: Open the tree to a chosen depth to balance overview and detail.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F026"></a>
 #### F026 - Search keys
 
 Description: Find matching key names without confusing them with string values.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F027"></a>
 #### F027 - Search values
 
 Description: Find primitive values and show the exact paths where they occur.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F028"></a>
 #### F028 - Jump to path
 
 Description: Navigate directly to a structural path such as $[].user.name.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F029"></a>
 #### F029 - Copy path
 
 Description: Copy the selected node path in a stable notation that handles arrays and unusual keys.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F030"></a>
 #### F030 - Copy subtree
 
 Description: Copy the selected object, array, or primitive as valid JSON.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F031"></a>
 #### F031 - Breadcrumb navigation
 
 Description: Show the selected node ancestry so users can move up and across nested structures.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F032"></a>
 #### F032 - Large-file preview mode
@@ -514,63 +514,63 @@ Tracking: Status = Implemented. Commit ID = TBD.
 
 Description: Read values from simple dot paths for common object traversal workflows.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F035"></a>
 #### F035 - Bracket-path query
 
 Description: Support keys containing dots, spaces, or special characters through bracket notation.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F036"></a>
 #### F036 - JSONPath query
 
 Description: Support standard JSONPath-style selection for advanced traversal and filtering.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F037"></a>
 #### F037 - Extract all matching values
 
 Description: Return every match with value, source path, and encounter order preserved.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F038"></a>
 #### F038 - Extract first matching value
 
 Description: Return the first match when users need a quick lookup instead of a full result set.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F039"></a>
 #### F039 - Extract objects containing key
 
 Description: Return parent objects that contain a requested key for record-level inspection.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F040"></a>
 #### F040 - Filter by predicate
 
 Description: Filter arrays or row sets by equality, contains, regex, range, null, or missing checks.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F041"></a>
 #### F041 - Save reusable query
 
 Description: Persist query text and mode so common lookups can be rerun later.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 <a id="F042"></a>
 #### F042 - Export query results
 
 Description: Download or copy query results with source paths and summary counts included.
 
-Tracking: Status = Planned. Commit ID = TBD.
+Tracking: Status = Implemented. Commit ID = TBD.
 
 
 <a id="table-analysis"></a>

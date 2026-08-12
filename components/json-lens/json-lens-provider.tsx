@@ -78,6 +78,8 @@ type SavedWorkspaceView = {
 type JsonLensContextValue = {
   jsonInput: string
   setJsonInput: Dispatch<SetStateAction<string>>
+  indentationWidth: number
+  setIndentationWidth: Dispatch<SetStateAction<number>>
   parseResult: JsonLensProcessedData["parseResult"]
   rows: FlatRow[]
   columns: string[]
@@ -152,6 +154,7 @@ const JsonLensContext = createContext<JsonLensContextValue | null>(null)
 
 export function JsonLensProvider({ children }: { children: ReactNode }) {
   const [jsonInput, setJsonInputState] = useState(SAMPLE_JSON)
+  const [indentationWidth, setIndentationWidth] = useState(2)
   const [sourceMetadata, setSourceMetadata] = useState<JsonSourceMetadata>(() =>
     createSourceMetadata(SAMPLE_JSON, {
       kind: "sample",
@@ -751,7 +754,7 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    setJsonInput(stringifyPretty(result.value))
+    setJsonInput(stringifyPretty(result.value, indentationWidth))
   }
 
   function minifyJson() {
@@ -774,6 +777,8 @@ export function JsonLensProvider({ children }: { children: ReactNode }) {
       value={{
         jsonInput,
         setJsonInput,
+        indentationWidth,
+        setIndentationWidth,
         parseResult,
         rows,
         columns,

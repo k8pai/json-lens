@@ -59,6 +59,7 @@ export type JsonEditorMarkerKind =
   | "diff-type"
   | "diff-null"
   | "diff-array-count"
+  | "navigation-match"
 
 export type JsonEditorMarker = {
   id: string
@@ -426,6 +427,11 @@ function createEditorExtensions({
       ".json-editor-marker--diff-array-count": {
         backgroundColor: "hsl(188 75% 42% / 0.16)",
         outline: "1px solid hsl(188 75% 42% / 0.32)",
+      },
+      ".json-editor-marker--navigation-match": {
+        backgroundColor:
+          "color-mix(in oklab, var(--primary) 22%, transparent)",
+        outline: "1px solid color-mix(in oklab, var(--primary) 45%, transparent)",
       },
     }),
   ]

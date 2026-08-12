@@ -1,12 +1,25 @@
 export type ExtractedFieldGroup = {
   path: string
+  items: ExtractedValue[]
   values: unknown[]
 }
 
-export type FieldExtractionMode = "field" | "path"
+export type ExtractedValue = {
+  path: string
+  value: unknown
+}
+
+export type FieldExtractionMode =
+  | "contains-key"
+  | "field"
+  | "path"
+  | "predicate"
+
+export type FieldExtractionLimit = "all" | "first"
 
 type PendingValue = {
   path: string
+  sourcePath: string
   value: unknown
 }
 
@@ -17,8 +30,8 @@ export function extractFieldValueGroups(
   const normalizedFieldName = fieldName.trim()
   if (!normalizedFieldName) return []
 
-  const valuesByPath = new Map<string, unknown[]>()
-  const pending: PendingValue[] = [{ path: "$", value: root }]
+  const valuesByPath = new Map<string, ExtractedValue[]>()
+  const pending: PendingValue[] = [{ path: "$", sourcePath: "$", value: root }]
 
   while (pending.length) {
     const current = pending.pop()
@@ -28,7 +41,11 @@ export function extractFieldValueGroups(
       const itemPath = `${current.path}[]`
 
       for (let index = current.value.length - 1; index >= 0; index -= 1) {
-        pending.push({ path: itemPath, value: current.value[index] })
+        pending.push({
+          path: itemPath,
+          sourcePath: `${current.sourcePath}[${index}]`,
+          value: current.value[index],
+        })
       }
       continue
     }
@@ -39,27 +56,33 @@ export function extractFieldValueGroups(
     for (let index = entries.length - 1; index >= 0; index -= 1) {
       const [key, value] = entries[index]
       const childPath = appendStructuralPath(current.path, key)
+      const sourcePath = appendStructuralPath(current.sourcePath, key)
 
       if (key === normalizedFieldName) {
         const values = valuesByPath.get(childPath)
-        if (values) values.push(value)
-        else valuesByPath.set(childPath, [value])
+        const item = { path: sourcePath, value }
+        if (values) values.push(item)
+        else valuesByPath.set(childPath, [item])
       }
 
-      pending.push({ path: childPath, value })
+      pending.push({ path: childPath, sourcePath, value })
     }
   }
 
-  return Array.from(valuesByPath, ([path, values]) => ({ path, values }))
+  return Array.from(valuesByPath, ([path, items]) => ({
+    path,
+    items,
+    values: items.map((item) => item.value),
+  }))
 }
 
 export function extractJsonPathValues(
   root: unknown,
   expression: string
 ): ExtractedFieldGroup[] {
-  const normalizedExpression = expression.trim()
+  const normalizedExpression = normalizeJsonPathExpression(expression)
   const tokens = parseJsonPath(normalizedExpression)
-  let candidates: PendingValue[] = [{ path: "$", value: root }]
+  let candidates: PendingValue[] = [{ path: "$", sourcePath: "$", value: root }]
 
   for (const token of tokens) {
     const next: PendingValue[] = []
@@ -69,6 +92,7 @@ export function extractJsonPathValues(
         if (isJsonRecord(candidate.value) && token.key in candidate.value) {
           next.push({
             path: appendStructuralPath(candidate.path, token.key),
+            sourcePath: appendStructuralPath(candidate.sourcePath, token.key),
             value: candidate.value[token.key],
           })
         }
@@ -79,6 +103,7 @@ export function extractJsonPathValues(
         if (Array.isArray(candidate.value) && token.index < candidate.value.length) {
           next.push({
             path: `${candidate.path}[${token.index}]`,
+            sourcePath: `${candidate.sourcePath}[${token.index}]`,
             value: candidate.value[token.index],
           })
         }
@@ -87,11 +112,19 @@ export function extractJsonPathValues(
 
       if (Array.isArray(candidate.value)) {
         candidate.value.forEach((value, index) => {
-          next.push({ path: `${candidate.path}[${index}]`, value })
+          next.push({
+            path: `${candidate.path}[]`,
+            sourcePath: `${candidate.sourcePath}[${index}]`,
+            value,
+          })
         })
       } else if (isJsonRecord(candidate.value)) {
         Object.entries(candidate.value).forEach(([key, value]) => {
-          next.push({ path: appendStructuralPath(candidate.path, key), value })
+          next.push({
+            path: appendStructuralPath(candidate.path, key),
+            sourcePath: appendStructuralPath(candidate.sourcePath, key),
+            value,
+          })
         })
       }
     }
@@ -99,9 +132,108 @@ export function extractJsonPathValues(
     candidates = next
   }
 
-  return candidates.length
-    ? [{ path: normalizedExpression, values: candidates.map(({ value }) => value) }]
+  if (!candidates.length) return []
+
+  const items = candidates.map(({ sourcePath, value }) => ({
+    path: sourcePath,
+    value,
+  }))
+
+  return [
+    {
+      path: normalizedExpression,
+      items,
+      values: items.map((item) => item.value),
+    },
+  ]
+}
+
+export function extractObjectsContainingKey(
+  root: unknown,
+  fieldName: string
+): ExtractedFieldGroup[] {
+  const normalizedFieldName = fieldName.trim()
+  if (!normalizedFieldName) return []
+
+  const valuesByPath = new Map<string, ExtractedValue[]>()
+  const pending: PendingValue[] = [{ path: "$", sourcePath: "$", value: root }]
+
+  while (pending.length) {
+    const current = pending.pop()
+    if (!current) continue
+
+    if (Array.isArray(current.value)) {
+      for (let index = current.value.length - 1; index >= 0; index -= 1) {
+        pending.push({
+          path: `${current.path}[]`,
+          sourcePath: `${current.sourcePath}[${index}]`,
+          value: current.value[index],
+        })
+      }
+      continue
+    }
+
+    if (!isJsonRecord(current.value)) continue
+
+    if (Object.prototype.hasOwnProperty.call(current.value, normalizedFieldName)) {
+      const values = valuesByPath.get(current.path)
+      const item = { path: current.sourcePath, value: current.value }
+      if (values) values.push(item)
+      else valuesByPath.set(current.path, [item])
+    }
+
+    const entries = Object.entries(current.value)
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const [key, value] = entries[index]
+      pending.push({
+        path: appendStructuralPath(current.path, key),
+        sourcePath: appendStructuralPath(current.sourcePath, key),
+        value,
+      })
+    }
+  }
+
+  return Array.from(valuesByPath, ([path, items]) => ({
+    path,
+    items,
+    values: items.map((item) => item.value),
+  }))
+}
+
+export function filterObjectsByPredicate(
+  root: unknown,
+  expression: string
+): ExtractedFieldGroup[] {
+  const predicate = parsePredicateExpression(expression)
+  const candidates = collectRecordCandidates(root)
+  const items = candidates
+    .filter((candidate) => evaluatePredicate(candidate.value, predicate))
+    .map(({ sourcePath, value }) => ({ path: sourcePath, value }))
+
+  return items.length
+    ? [{ path: `filter:${predicate.path} ${predicate.operator}`, items, values: items.map((item) => item.value) }]
     : []
+}
+
+export function limitExtractedGroups(
+  groups: ExtractedFieldGroup[],
+  limit: FieldExtractionLimit
+): ExtractedFieldGroup[] {
+  if (limit === "all") return groups
+
+  for (const group of groups) {
+    const first = group.items[0]
+    if (!first) continue
+    return [
+      {
+        path: group.path,
+        items: [first],
+        values: [first.value],
+      },
+    ]
+  }
+
+  return []
 }
 
 type JsonPathToken =
@@ -156,6 +288,15 @@ function parseJsonPath(expression: string): JsonPathToken[] {
   return tokens
 }
 
+function normalizeJsonPathExpression(expression: string) {
+  const normalizedExpression = expression.trim()
+  if (!normalizedExpression) throw new Error("JSON path is required.")
+  if (normalizedExpression.startsWith("$")) return normalizedExpression
+  if (normalizedExpression.startsWith(".")) return `$${normalizedExpression}`
+  if (normalizedExpression.startsWith("[")) return `$${normalizedExpression}`
+  return `$.${normalizedExpression}`
+}
+
 function findBracketEnd(expression: string, start: number) {
   let quoted = false
   let escaped = false
@@ -185,4 +326,156 @@ function appendStructuralPath(path: string, key: string) {
 
 function isJsonRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+type PredicateOperator =
+  | "!="
+  | "<"
+  | "<="
+  | "="
+  | ">"
+  | ">="
+  | "contains"
+  | "exists"
+  | "matches"
+  | "missing"
+  | "null"
+
+type PredicateExpression = {
+  path: string
+  operator: PredicateOperator
+  expected?: unknown
+}
+
+const PREDICATE_PATTERN =
+  /^(.+?)\s*(>=|<=|!=|=|>|<|contains|matches|exists|missing|null)(?:\s+(.+))?$/i
+
+function parsePredicateExpression(expression: string): PredicateExpression {
+  const match = expression.trim().match(PREDICATE_PATTERN)
+  if (!match) {
+    throw new Error(
+      'Predicate must look like "status = active", "age >= 30", "name contains May", or "email exists".'
+    )
+  }
+
+  const operator = match[2].toLowerCase() as PredicateOperator
+  const expectedText = match[3]?.trim()
+
+  if (!["exists", "missing", "null"].includes(operator) && !expectedText) {
+    throw new Error("Predicate value is required for this operator.")
+  }
+
+  return {
+    path: normalizeJsonPathExpression(match[1].trim()),
+    operator,
+    expected: expectedText ? parsePredicateLiteral(expectedText) : undefined,
+  }
+}
+
+function collectRecordCandidates(root: unknown): PendingValue[] {
+  const candidates: PendingValue[] = []
+  const pending: PendingValue[] = [{ path: "$", sourcePath: "$", value: root }]
+
+  while (pending.length) {
+    const current = pending.pop()
+    if (!current) continue
+
+    if (Array.isArray(current.value)) {
+      for (let index = current.value.length - 1; index >= 0; index -= 1) {
+        pending.push({
+          path: `${current.path}[]`,
+          sourcePath: `${current.sourcePath}[${index}]`,
+          value: current.value[index],
+        })
+      }
+      continue
+    }
+
+    if (!isJsonRecord(current.value)) continue
+
+    candidates.push(current)
+    const entries = Object.entries(current.value)
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const [key, value] = entries[index]
+      if (Array.isArray(value) || isJsonRecord(value)) {
+        pending.push({
+          path: appendStructuralPath(current.path, key),
+          sourcePath: appendStructuralPath(current.sourcePath, key),
+          value,
+        })
+      }
+    }
+  }
+
+  return candidates
+}
+
+function evaluatePredicate(
+  candidate: unknown,
+  predicate: PredicateExpression
+) {
+  const groups = extractJsonPathValues(candidate, predicate.path)
+  const values = groups.flatMap((group) => group.values)
+
+  if (predicate.operator === "exists") return values.length > 0
+  if (predicate.operator === "missing") return values.length === 0
+  if (predicate.operator === "null") return values.some((value) => value === null)
+
+  return values.some((value) =>
+    comparePredicateValue(value, predicate.operator, predicate.expected)
+  )
+}
+
+function comparePredicateValue(
+  actual: unknown,
+  operator: PredicateOperator,
+  expected: unknown
+) {
+  if (operator === "contains") {
+    return String(actual ?? "").includes(String(expected ?? ""))
+  }
+
+  if (operator === "matches") {
+    try {
+      return new RegExp(String(expected ?? "")).test(String(actual ?? ""))
+    } catch {
+      throw new Error("Predicate regex is invalid.")
+    }
+  }
+
+  if (operator === "=") return normalizeComparable(actual) === normalizeComparable(expected)
+  if (operator === "!=") return normalizeComparable(actual) !== normalizeComparable(expected)
+
+  const actualNumber = Number(actual)
+  const expectedNumber = Number(expected)
+  if (!Number.isFinite(actualNumber) || !Number.isFinite(expectedNumber)) {
+    return false
+  }
+
+  if (operator === ">") return actualNumber > expectedNumber
+  if (operator === ">=") return actualNumber >= expectedNumber
+  if (operator === "<") return actualNumber < expectedNumber
+  if (operator === "<=") return actualNumber <= expectedNumber
+
+  return false
+}
+
+function parsePredicateLiteral(value: string) {
+  if (value === "true") return true
+  if (value === "false") return false
+  if (value === "null") return null
+  if (/^-?\d+(?:\.\d+)?$/.test(value)) return Number(value)
+
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return value.slice(1, -1)
+  }
+
+  return value
+}
+
+function normalizeComparable(value: unknown) {
+  return typeof value === "string" ? value : JSON.stringify(value)
 }

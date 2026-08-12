@@ -1,20 +1,29 @@
 import {
+  extractObjectsContainingKey,
   extractFieldValueGroups,
   extractJsonPathValues,
+  filterObjectsByPredicate,
+  limitExtractedGroups,
   type ExtractedFieldGroup,
+  type FieldExtractionLimit,
   type FieldExtractionMode,
 } from "./json-field-extraction"
 import { parseJson } from "./json-lens"
 
 type FieldExtractionRequest = {
+  limit?: FieldExtractionLimit
   mode: FieldExtractionMode
   query: string
   input: string
   requestId: number
 }
 
-export type SerializedFieldGroup = Omit<ExtractedFieldGroup, "values"> & {
+export type SerializedFieldGroup = Omit<ExtractedFieldGroup, "items" | "values"> & {
   count: number
+  items: {
+    json: string
+    path: string
+  }[]
   json: string
 }
 
@@ -33,7 +42,7 @@ export type FieldExtractionResponse =
     }
 
 self.onmessage = (event: MessageEvent<FieldExtractionRequest>) => {
-  const { mode, query, input, requestId } = event.data
+  const { limit = "all", mode, query, input, requestId } = event.data
 
   try {
     // Worker boundary keeps parsing, traversal, and serialization away from the UI thread.
@@ -43,12 +52,16 @@ self.onmessage = (event: MessageEvent<FieldExtractionRequest>) => {
       return
     }
 
-    const extracted =
-      mode === "path"
-        ? extractJsonPathValues(parsed.value, query)
-        : extractFieldValueGroups(parsed.value, query)
-    const groups = extracted.map(({ path, values }) => ({
+    const extracted = limitExtractedGroups(
+      runExtractionMode(mode, parsed.value, query),
+      limit
+    )
+    const groups = extracted.map(({ items, path, values }) => ({
       path,
+      items: items.map((item) => ({
+        path: item.path,
+        json: JSON.stringify(item.value, null, 2),
+      })),
       count: values.length,
       json: JSON.stringify(values, null, 2),
     }))
@@ -76,6 +89,17 @@ self.onmessage = (event: MessageEvent<FieldExtractionRequest>) => {
       requestId,
     } satisfies FieldExtractionResponse)
   }
+}
+
+function runExtractionMode(
+  mode: FieldExtractionMode,
+  value: unknown,
+  query: string
+) {
+  if (mode === "path") return extractJsonPathValues(value, query)
+  if (mode === "contains-key") return extractObjectsContainingKey(value, query)
+  if (mode === "predicate") return filterObjectsByPredicate(value, query)
+  return extractFieldValueGroups(value, query)
 }
 
 function indentJson(json: string, spaces: number) {

@@ -479,8 +479,8 @@ export function displayValue(value: unknown) {
   return String(value)
 }
 
-export function stringifyPretty(value: unknown) {
-  return JSON.stringify(value, null, 2)
+export function stringifyPretty(value: unknown, space = 2) {
+  return JSON.stringify(value, null, space)
 }
 
 export function computeStats(rows: FlatRow[], columns: string[]): ColumnStats[] {

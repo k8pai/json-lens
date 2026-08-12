@@ -44,6 +44,7 @@ import {
 } from "./field-value-extractor"
 import { JsonCodeEditor, type JsonEditorMarker } from "./json-code-editor"
 import { useJsonLens } from "./json-lens-provider"
+import { JsonNavigationPanel } from "./json-navigation-panel"
 import { SourceManagementPanel } from "./source-management-panel"
 import {
   ValidationRepairPanel,
@@ -151,6 +152,7 @@ export function JsonWorkspace() {
     useState<FieldExtractionResult | null>(null)
   const [activeTool, setActiveTool] = useState<ActiveJsonTool>(null)
   const [activeMarkerId, setActiveMarkerId] = useState<string | undefined>()
+  const [activeJsonPath, setActiveJsonPath] = useState<string | undefined>()
   const [activeDiffTags, setActiveDiffTags] = useState<Set<JsonDiffKind>>(
     () => new Set()
   )
@@ -166,10 +168,11 @@ export function JsonWorkspace() {
   }, [activeDiffTags, diffRows])
   const sourceEditorMarkers = useMemo(
     () => [
+      ...createNavigationMarkers(lens.jsonInput, activeJsonPath),
       ...createValidationMarkers(validationReport),
       ...createDiffMarkers(filteredDiffRows, "left"),
     ],
-    [filteredDiffRows, validationReport]
+    [activeJsonPath, filteredDiffRows, lens.jsonInput, validationReport]
   )
   const outputEditorMarkers = useMemo(
     () => createDiffMarkers(filteredDiffRows, "right"),
@@ -180,6 +183,11 @@ export function JsonWorkspace() {
     setComparisonSummary("")
     setDiffRows([])
     setActiveMarkerId(undefined)
+  }
+
+  function selectJsonPath(path: string) {
+    setActiveJsonPath(path)
+    setActiveMarkerId(`navigation-${path}`)
   }
 
   function toggleDiffTag(kind: JsonDiffKind) {
@@ -206,7 +214,7 @@ export function JsonWorkspace() {
     }
 
     const result = convertJsonKeys(parsed.value, mode)
-    const formatted = stringifyPretty(result.value)
+    const formatted = stringifyPretty(result.value, lens.indentationWidth)
 
     if (result.collisions.length) {
       setDiffRows([])
@@ -327,7 +335,11 @@ export function JsonWorkspace() {
       return
     }
 
-    setValue(pretty ? stringifyPretty(result.value) : JSON.stringify(result.value))
+    setValue(
+      pretty
+        ? stringifyPretty(result.value, lens.indentationWidth)
+        : JSON.stringify(result.value)
+    )
     clearDiffResult()
     lens.notify(successMessage)
   }
@@ -474,6 +486,7 @@ export function JsonWorkspace() {
             lens.setJsonInput(value)
             setValidationReport(null)
             setExtractionResult(null)
+            setActiveJsonPath(undefined)
             clearDiffResult()
           }}
         />
@@ -571,6 +584,15 @@ export function JsonWorkspace() {
   return (
     <section className="space-y-4">
       <SourceManagementPanel />
+      <JsonNavigationPanel
+        activePath={activeJsonPath}
+        indentationWidth={lens.indentationWidth}
+        isLargeDataMode={lens.largeDataMode}
+        jsonInput={lens.jsonInput}
+        notify={lens.notify}
+        onIndentationWidthChange={lens.setIndentationWidth}
+        onSelectPath={selectJsonPath}
+      />
       {toolsPanel}
       {activeToolPanel}
       <div className={cn("grid gap-4", contextualRightPanel && "xl:grid-cols-2")}>
@@ -858,6 +880,27 @@ function createDiffMarkers(
       },
     ]
   })
+}
+
+function createNavigationMarkers(
+  sourceJson: string,
+  activePath: string | undefined
+): JsonEditorMarker[] {
+  if (!activePath) return []
+
+  const sourceMap = buildJsonSourceMap(sourceJson)
+  const range = sourceMap?.ranges.get(activePath)?.valueRange
+  if (!range) return []
+
+  return [
+    {
+      id: `navigation-${activePath}`,
+      kind: "navigation-match",
+      from: range.from,
+      to: range.to,
+      message: activePath,
+    },
+  ]
 }
 
 function getEditorDiffMarkerKind(
